@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>요술램프 동화 만들기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Gowun Dodum', 'Inter', sans-serif;
+            background-color: #FFF0F5; /* Light LavendarBlush */
+            overflow-x: hidden; 
+            position: relative; 
+            /* Custom heart cursor for the body */
+            cursor: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'20\' height=\'20\' viewBox=\'0 0 16 16\' fill=\'%23FFC0CB\'%3e%3cpath d=\'M8 13.12L6.89 12.08C3.59 9.27 1.33 7.33 1.33 5C1.33 3.08 2.92 1.5 4.83 1.5C5.83 1.5 6.79 1.92 7.44 2.59L8 3.17l.56-.58C9.21 1.92 10.17 1.5 11.17 1.5C13.08 1.5 14.67 3.08 14.67 5C14.67 7.33 12.41 9.27 9.11 12.08L8 13.12z\'/%3e%3c/svg%3e') 8 13, auto;
+        }
+        h1, h2, h3, label, button, #customAlertTitle {
+            font-family: 'Gaegu', 'Inter', cursive;
+            font-weight: 700;
+        }
+        h1 { font-size: 3rem; line-height: 1.2; color: #EC4899; /* Pink-500 */ }
+        h2 { color: #8B5CF6; /* Violet-500 */ }
+        label { color: #7C3AED; /* Violet-600 */ }
+
+        /* Button base styles for transition */
+        .action-button, #customAlertCloseButton {
+            transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, background-color 0.2s ease-out;
+            will-change: transform, box-shadow; /* Optimize for transform and shadow animations */
+            cursor: pointer; /* Ensure all buttons show pointer cursor */
+        }
+
+        /* Common hover effects for main action buttons */
+        .action-button:hover {
+            transform: scale(1.05) translateY(-2px); /* Lift and scale */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2); /* Enhanced shadow */
+        }
+        
+        /* Specific hover for modal close button */
+        #customAlertCloseButton:hover {
+            background-color: #9333EA; /* Purple-600 - specific color */
+            transform: scale(1.08) translateY(-1px); /* Slightly different pop */
+            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+        }
+
+
+        button#generateButton { 
+            background-color: #FBBF24; /* Amber-400 */ 
+        }
+        button#generateButton:hover { 
+            background-color: #F59E0B; /* Amber-500 */
+        }
+        button#readStoryButton { 
+            background-color: #22D3EE; /* Cyan-400 */ 
+        }
+        button#readStoryButton:hover { 
+            background-color: #06B6D4; /* Cyan-500 */ 
+        }
+        button#readStoryButton.reading { 
+            background-color: #F472B6; /* Pink-400 */ 
+        }
+        button#readStoryButton.reading:hover { 
+            background-color: #EC4899; /* Pink-500 */ 
+        }
+        
+        #storyPrompt::placeholder {
+            font-family: 'Gowun Dodum', sans-serif;
+            color: #A78BFA; /* Violet-400 */
+        }
+        #storyText {
+            font-family: 'Gowun Dodum', sans-serif;
+            line-height: 1.8;
+            color: #374151; /* Gray-700 */
+        }
+        .cute-container {
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1), 0 6px 6px rgba(0,0,0,0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            position: relative; 
+            z-index: 10;
+        }
+        .spinner {
+            border-top-color: #EC4899; /* Pink-500 */
+            border-right-color: transparent;
+            border-bottom-color: #EC4899; /* Pink-500 */
+            border-left-color: transparent;
+        }
+        #customAlertModal .modal-content {
+             background-color: #FFE4E1; /* MistyRose */
+             border-radius: 20px;
+             padding: 25px;
+             border: 3px dashed #F472B6; /* Pink-400 */
+        }
+        #customAlertModal #customAlertTitle { color: #D946EF; /* Fuchsia-500 */ }
+        #customAlertModal #customAlertMessage { color: #6B21A8; /* Purple-800 */ font-family: 'Gowun Dodum', sans-serif; white-space: pre-wrap; word-break: break-all;}
+        #customAlertModal #customAlertCloseButton {
+            background-color: #A855F7; /* Purple-500 */
+            color: white;
+            font-family: 'Gaegu', cursive;
+            font-weight: 700;
+            padding: 10px 20px;
+            border-radius: 12px;
+            /* transition and will-change are now handled by the common rule */
+        }
+        #storyImage {
+            cursor: pointer; /* Standard pointer for clickable image */
+        }
+
+        /* Background Hearts Animation */
+        .hearts-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            z-index: 0; 
+            overflow: hidden;
+        }
+
+        .heart {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            opacity: 0;
+            animation: heart-rise 8s infinite ease-in;
+            /* The actual heart shape is drawn using ::before and ::after pseudo-elements */
+        }
+
+        .heart::before,
+        .heart::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            width: 10px; /* Half of the .heart width */
+            height: 16px; 
+            background-color: var(--heart-color, #FFC0CB); /* Default pink, can be overridden */
+            border-radius: 10px 10px 0 0;
+        }
+
+        .heart::before {
+            left: 10px; /* Position the right half */
+            transform: rotate(-45deg);
+            transform-origin: 0 100%;
+        }
+
+        .heart::after {
+            left: 0; /* Position the left half */
+            transform: rotate(45deg);
+            transform-origin: 100% 100%;
+        }
+
+        @keyframes heart-rise {
+            0% {
+                bottom: -20px; 
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.7; 
+            }
+            90% {
+                opacity: 0.7; 
+            }
+            100% {
+                bottom: 100%; 
+                opacity: 0; 
+                transform: translateX(var(--tx, 0px)) scale(var(--scale, 1));
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="hearts-container" id="heartsContainer"></div>
+
+    <div class="container mx-auto max-w-2xl">
+        <header class="text-center py-6 md:py-8">
+            <h1 class="text-4xl md:text-5xl font-bold">🎨 요술램프 동화 램프 🧞</h1>
+            <p class="text-lg text-pink-500 mt-2" style="font-family: 'Gaegu', cursive; font-weight:700;">재미있는 이야기를 만들고 들어볼까요?</p>
+        </header>
+
+        <main>
+            <div class="prompt-section cute-container">
+                <label for="storyPrompt" class="block text-2xl font-semibold mb-3 text-center">어떤 이야기를 만들고 싶나요? (한국어로 입력해주세요)</label>
+                <textarea id="storyPrompt" class="w-full p-4 border-2 border-purple-300 rounded-xl focus:ring-purple-500 focus:border-purple-500 text-lg" rows="3" placeholder="예) 용감한 아기토끼의 우주 모험"></textarea>
+                <button id="generateButton" class="action-button mt-5 w-full text-white font-bold py-4 px-6 rounded-xl text-2xl shadow-md">
+                    이야기 뚝딱! ✨
+                </button>
+            </div>
+
+            <div id="loadingIndicator" class="text-center my-8 hidden">
+                <div class="inline-block animate-spin spinner rounded-full h-16 w-16 border-8"></div>
+                <p class="text-pink-600 text-xl mt-4" style="font-family: 'Gaegu', cursive; font-weight:700;">이야기와 그림을 만들고 있어요... <br>잠시만 기다려주세요! 얍! 🪄</p>
+            </div>
+
+            <div id="storyOutput" class="hidden">
+                <div class="image-display cute-container">
+                    <h2 class="text-3xl font-semibold mb-5 text-center">짠! 멋진 그림이에요!</h2>
+                    <img id="storyImage" src="https://placehold.co/600x400/E0F2F7/333333?text=그림이+나올+곳이에요!+%E2%9C%A8&font=gaegu" alt="생성된 동화 이미지" class="w-full max-w-md mx-auto rounded-lg shadow-md border-4 border-pink-300">
+                    <div id="imageError" class="text-red-500 text-center mt-3 text-lg hidden" style="font-family: 'Gowun Dodum', sans-serif;"></div>
+                </div>
+
+                <div class="text-display cute-container mt-8">
+                    <h2 class="text-3xl font-semibold mb-5 text-center">재미있는 이야기가 펼쳐집니다!</h2>
+                    <div id="storyText" class="text-lg leading-relaxed whitespace-pre-wrap p-2">
+                        여기에 이야기가 나올 거예요. 두근두근! 💖
+                    </div>
+                    <div id="textError" class="text-red-500 text-center mt-3 text-lg hidden" style="font-family: 'Gowun Dodum', sans-serif;"></div>
+                    <button id="readStoryButton" class="action-button mt-5 w-full text-white font-bold py-3 px-5 rounded-lg text-xl shadow-md hidden">
+                        동화 읽어주기 📢
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center py-8 mt-10">
+            <p class="text-md text-pink-500" style="font-family: 'Gowun Dodum', sans-serif;">© 2025 신나는 동화 세상</p>
+        </footer>
+    </div>
+
+    <div id="customAlertModal" class="fixed inset-0 bg-black bg-opacity-40 overflow-y-auto h-full w-full flex items-center justify-center hidden z-50 p-4">
+        <div class="modal-content w-full max-w-md mx-auto">
+            <div class="text-center">
+                <h3 id="customAlertTitle" class="text-3xl font-bold">알림!</h3>
+                <p id="customAlertMessage" class="text-lg mt-4 mb-6">메시지가 여기에 표시됩니다.</p>
+                <button id="customAlertCloseButton" class="text-xl">확인</button> 
+                </div>
+        </div>
+    </div>
+
+    <script>
+        const storyPromptInput = document.getElementById('storyPrompt');
+        const generateButton = document.getElementById('generateButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const storyOutput = document.getElementById('storyOutput');
+        const storyImage = document.getElementById('storyImage');
+        const storyText = document.getElementById('storyText');
+        const imageError = document.getElementById('imageError');
+        const textError = document.getElementById('textError');
+        const customAlertModal = document.getElementById('customAlertModal');
+        const customAlertTitle = document.getElementById('customAlertTitle');
+        const customAlertMessage = document.getElementById('customAlertMessage');
+        const customAlertCloseButton = document.getElementById('customAlertCloseButton');
+        const readStoryButton = document.getElementById('readStoryButton');
+        const heartsContainer = document.getElementById('heartsContainer');
+
+
+        const defaultImageUrl = 'https://placehold.co/600x400/E0F2F7/333333?text=그림이+나올+곳이에요!+%E2%9C%A8&font=gaegu';
+        const defaultStoryText = '여기에 이야기가 나올 거예요. 두근두근! 💖';
+        
+        let originalKoreanPromptForImage = ''; 
+        let fullEnglishImageGenPrompt = ''; 
+        let currentUtterance = null; 
+
+        const GEMINI_API_KEY = ""; 
+        const GEMINI_TEXT_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+        const IMAGEN_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}`;
+        const DESCRIPTIVE_STYLE_FOR_IMAGE_EN = "Very cute and lovely characters. Bright, warm, and colorful. Happy and fantastical atmosphere. Clear and soft drawing style. Include background.";
+
+
+        generateButton.addEventListener('click', generateStoryAndImage);
+        customAlertCloseButton.addEventListener('click', () => customAlertModal.classList.add('hidden'));
+        storyImage.addEventListener('click', showImagePromptInfo);
+        readStoryButton.addEventListener('click', toggleReadStory);
+
+
+        function showCustomAlert(message, title = "앗!") {
+            customAlertTitle.textContent = title;
+            customAlertMessage.textContent = message;
+            customAlertModal.classList.remove('hidden');
+        }
+
+        function showImagePromptInfo() {
+            if (fullEnglishImageGenPrompt && originalKoreanPromptForImage) {
+                const message = `🎨 이 그림은 이렇게 만들어졌어요 🎨\n\n--- 사용자 입력 (한국어) ---\n"${originalKoreanPromptForImage}"\n\n--- 이미지 생성 프롬프트 (영어) ---\n"${fullEnglishImageGenPrompt}"`;
+                showCustomAlert(message, "그림 프롬프트 정보");
+            } else {
+                showCustomAlert("아직 그림이 만들어지지 않았거나, 프롬프트 정보를 가져올 수 없어요. 😥", "그림 프롬프트 정보");
+            }
+        }
+
+        function toggleReadStory() {
+            if (!storyText.textContent || storyText.textContent === defaultStoryText) {
+                showCustomAlert("먼저 동화를 만들어주세요! 😊");
+                return;
+            }
+
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel(); 
+                readStoryButton.textContent = "동화 읽어주기 📢";
+                readStoryButton.classList.remove('reading');
+                if (currentUtterance) {
+                    currentUtterance.onend = null; 
+                    currentUtterance.onstart = null;
+                    currentUtterance.onerror = null;
+                }
+                currentUtterance = null;
+            } else {
+                currentUtterance = new SpeechSynthesisUtterance(storyText.textContent);
+                currentUtterance.lang = 'ko-KR'; 
+                currentUtterance.rate = 0.9; 
+                currentUtterance.pitch = 1.1;
+
+                currentUtterance.onstart = () => {
+                    readStoryButton.textContent = "읽는 중... 멈추려면 클릭! 🤫";
+                    readStoryButton.classList.add('reading');
+                };
+                currentUtterance.onend = () => {
+                    readStoryButton.textContent = "동화 읽어주기 📢";
+                    readStoryButton.classList.remove('reading');
+                    if (currentUtterance) { 
+                         currentUtterance.onstart = null;
+                         currentUtterance.onerror = null;
+                         currentUtterance.onend = null; 
+                    }
+                    currentUtterance = null;
+                };
+                currentUtterance.onerror = (event) => {
+                    console.error('SpeechSynthesisUtterance.onerror event object:', event);
+                    let detailedErrorMessage = '알 수 없는 음성 재생 오류';
+                    if (event.error) {
+                        if (typeof event.error === 'string') {
+                            detailedErrorMessage = `음성 오류 코드: ${event.error}`;
+                            switch (event.error) {
+                                case 'canceled': detailedErrorMessage = '음성 재생이 취소되었습니다.'; break;
+                                case 'interrupted': detailedErrorMessage = '음성 재생이 중단되었습니다.'; break;
+                                case 'audio-busy': detailedErrorMessage = '음성 장치가 사용 중입니다. 잠시 후 다시 시도해주세요.'; break;
+                                case 'audio-hardware': detailedErrorMessage = '음성 장치에 문제가 발생했습니다.'; break;
+                                case 'network': detailedErrorMessage = '음성 합성을 위한 네트워크 연결에 실패했습니다.'; break;
+                                case 'synthesis-unavailable': detailedErrorMessage = '음성 합성 엔진을 사용할 수 없습니다.'; break;
+                                case 'synthesis-failed': detailedErrorMessage = '음성 합성에 실패했습니다.'; break;
+                                case 'language-unavailable': detailedErrorMessage = '선택된 언어(한국어)를 지원하지 않습니다.'; break;
+                                case 'voice-unavailable': detailedErrorMessage = '선택된 음성을 사용할 수 없습니다.'; break;
+                                case 'text-too-long': detailedErrorMessage = '읽을 내용이 너무 깁니다.'; break;
+                                case 'invalid-argument': detailedErrorMessage = '음성 합성에 잘못된 인자가 전달되었습니다.'; break;
+                                case 'not-allowed': detailedErrorMessage = '음성 재생 권한이 허용되지 않았습니다.'; break;
+                                default: detailedErrorMessage = `알려지지 않은 음성 오류 코드: ${event.error}`; break;
+                            }
+                        } else {
+                            console.warn('SpeechSynthesisUtterance.onerror: event.error was not a string. Value:', event.error, 'Type:', typeof event.error);
+                            detailedErrorMessage = '음성 재생 중 예상치 못한 오류가 발생했습니다 (오류 타입 확인 필요).';
+                            try {
+                                const errorDetails = JSON.stringify(event.error);
+                                if (errorDetails !== '{}' && event.error.toString() !== '[object Object]') { 
+                                    detailedErrorMessage += ` (세부 정보: ${errorDetails})`;
+                                } else if (event.error && typeof event.error.isTrusted !== 'undefined') { 
+                                     detailedErrorMessage += ` (브라우저 내부 오류 발생)`;
+                                }
+                            } catch (e) { /* ignore stringify error */ }
+                        }
+                    }
+                    showCustomAlert(`동화를 읽는 중 오류가 발생했어요: ${detailedErrorMessage}`, "음성 재생 오류");
+                    readStoryButton.textContent = "동화 읽어주기 📢";
+                    readStoryButton.classList.remove('reading');
+                    if (currentUtterance) {
+                         currentUtterance.onstart = null;
+                         currentUtterance.onend = null;
+                         currentUtterance.onerror = null; 
+                    }
+                    currentUtterance = null;
+                };
+                speechSynthesis.speak(currentUtterance);
+            }
+        }
+        
+
+        async function callGeminiAPI(promptText) { 
+            const payload = {
+                contents: [{ role: "user", parts: [{ text: promptText }] }]
+            };
+            
+            const response = await fetch(GEMINI_TEXT_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            
+            if (!response.ok) {
+                let errorMessage = `Gemini API 오류 (상태: ${response.status})`;
+                let errorDetail = '알 수 없는 오류'; 
+                let serverErrorObject = null; 
+
+                try {
+                    serverErrorObject = await response.json();
+                    errorDetail = serverErrorObject.error?.message || response.statusText || '오류 응답 본문 없음';
+                    if (serverErrorObject.error?.details) {
+                         console.warn("Gemini API Error Details from server:", serverErrorObject.error.details);
+                    }
+                } catch (e) {
+                    errorDetail = response.statusText || '오류 응답 본문 파싱 불가';
+                }
+                
+                if (response.status === 401) {
+                    console.error("Gemini API 401 (Authentication/Authorization Error).", 
+                        "Prompt (first 50 chars):", promptText.substring(0,50), 
+                        "Server Response Status:", response.status, 
+                        "Server Error Detail:", errorDetail,
+                        "Parsed Server Error Object:", serverErrorObject 
+                    );
+                    errorMessage = `Gemini API 인증 실패 (상태: 401): 현재 앱에 제공된 API 키로는 요청하신 작업에 대한 권한이 없을 수 있습니다. API 키와 권한을 확인해주세요. (서버 세부 정보: ${errorDetail})`;
+                } else {
+                    errorMessage += `: ${errorDetail}`;
+                }
+                console.error("Full Gemini API Error to be thrown:", errorMessage);
+                throw new Error(errorMessage);
+            }
+
+            const result = await response.json();
+            if (result.candidates?.[0]?.content?.parts) {
+                let accumulatedText = "";
+                for (const part of result.candidates[0].content.parts) {
+                    if (part.text) {
+                        accumulatedText += part.text;
+                    }
+                }
+                if (accumulatedText) {
+                    return accumulatedText;
+                }
+            }
+            console.error("Gemini API - Unexpected response structure:", result);
+            throw new Error('Gemini API로부터 유효한 텍스트 응답을 받지 못했습니다 (응답 구조 확인 필요).');
+        }
+
+
+        async function generateStoryAndImage() {
+            originalKoreanPromptForImage = storyPromptInput.value.trim(); 
+            if (!originalKoreanPromptForImage) {
+                showCustomAlert('이야기 주제를 한국어로 입력해주세요! 무엇이든 좋아요 😊');
+                return;
+            }
+
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+                readStoryButton.textContent = "동화 읽어주기 📢";
+                readStoryButton.classList.remove('reading');
+                if (currentUtterance) {
+                    currentUtterance.onend = null;
+                    currentUtterance.onstart = null;
+                    currentUtterance.onerror = null;
+                }
+                currentUtterance = null;
+            }
+
+
+            loadingIndicator.classList.remove('hidden');
+            storyOutput.classList.add('hidden'); 
+            readStoryButton.classList.add('hidden'); 
+            storyImage.src = defaultImageUrl; 
+            storyText.innerHTML = defaultStoryText; 
+            imageError.classList.add('hidden'); 
+            textError.classList.add('hidden');
+            fullEnglishImageGenPrompt = ''; 
+            
+
+            let generatedText = '';
+            let translatedForImage = '';
+
+            try {
+                const storySystemPrompt = `당신은 초등학생을 위한 짧고 재미있고 교훈적인 동화를 쓰는 작가입니다. 내용은 약 3~5문단으로, 각 문단은 3-5문장 정도로 구성해주세요. 친절하고 따뜻한 어투를 사용해주세요. 다음 주제로 동화를 만들어주세요: "${originalKoreanPromptForImage}"`;
+                generatedText = await callGeminiAPI(storySystemPrompt);
+                storyText.textContent = generatedText; 
+                if (generatedText && generatedText !== defaultStoryText) {
+                    readStoryButton.classList.remove('hidden'); 
+                }
+            } catch (error) {
+                console.error('Error generating story text:', error);
+                textError.textContent = `이야기 생성 중 오류: ${error.message}`;
+                textError.classList.remove('hidden'); storyText.innerHTML = '이야기를 가져오지 못했어요. 😥';
+            }
+
+            try {
+                const translatePrompt = `다음 한국어 텍스트를 자연스러운 영어로 번역해주세요: "${originalKoreanPromptForImage}"`;
+                translatedForImage = await callGeminiAPI(translatePrompt);
+                fullEnglishImageGenPrompt = `Children's storybook illustration style. Illustrate the following: "${translatedForImage}". ${DESCRIPTIVE_STYLE_FOR_IMAGE_EN}`; 
+                
+                const imagePayload = { instances: [{ prompt: fullEnglishImageGenPrompt }], parameters: { "sampleCount": 1 } };
+                const imageResponse = await fetch(IMAGEN_API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imagePayload) });
+                
+                if (!imageResponse.ok) {
+                    let errorMessage = `이미지 생성 서버 응답 오류 (상태: ${imageResponse.status})`;
+                    try { const errorData = await imageResponse.json(); errorMessage = `이미지 API 오류: ${errorData.error?.message || imageResponse.statusText} (상태: ${imageResponse.status})`; }
+                    catch (e) { errorMessage += `: ${imageResponse.statusText || '응답 본문 파싱 불가'}`; }
+                    console.error("Image API Error:", errorMessage); throw new Error(errorMessage);
+                }
+                const imageResult = await imageResponse.json();
+                if (imageResult.predictions?.[0]?.bytesBase64Encoded) {
+                    storyImage.src = `data:image/png;base64,${imageResult.predictions[0].bytesBase64Encoded}`;
+                } else {
+                    throw new Error('이미지 데이터를 가져오지 못했거나 API 응답 형식이 올바르지 않습니다.');
+                }
+            } catch (error) { 
+                console.error('Error in image generation process:', error);
+                imageError.textContent = `그림 생성 중 오류: ${error.message || '알 수 없는 문제'}`;
+                imageError.classList.remove('hidden'); storyImage.src = defaultImageUrl; 
+                fullEnglishImageGenPrompt = ''; originalKoreanPromptForImage = ''; 
+            }
+
+            loadingIndicator.classList.add('hidden');
+            storyOutput.classList.remove('hidden');
+        }
+
+        storyImage.onerror = function() {
+            if (this.src !== defaultImageUrl) { 
+                 this.src = defaultImageUrl;
+                 imageError.textContent = '그림을 불러오는 데 문제가 생겼어요. 기본 그림으로 표시합니다.';
+                 imageError.classList.remove('hidden');
+                 fullEnglishImageGenPrompt = ''; originalKoreanPromptForImage = '';
+            }
+        };
+
+        window.addEventListener('beforeunload', () => {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+        });
+
+        // Function to create and animate hearts
+        function createHearts() {
+            const numberOfHearts = 15; 
+            for (let i = 0; i < numberOfHearts; i++) {
+                const heart = document.createElement('div');
+                heart.classList.add('heart');
+                heart.style.left = `${Math.random() * 100}vw`; 
+                heart.style.animationDelay = `${Math.random() * 7}s`; 
+                heart.style.setProperty('--tx', `${(Math.random() - 0.5) * 100}px`); 
+                heart.style.setProperty('--scale', `${0.5 + Math.random() * 0.8}`); 
+                // To apply random colors to ::before and ::after, you'd typically set a CSS variable on the .heart element
+                // and then use that variable in the ::before/::after rules.
+                // However, background-color on .heart itself won't color the pseudo-elements.
+                // For simplicity, we'll use the default pink defined in the CSS for ::before/::after.
+                // If truly random colors for each heart's pseudo-elements are needed, it would require
+                // dynamically creating <style> tags or more complex CSS variable handling.
+                heartsContainer.appendChild(heart);
+            }
+        }
+        createHearts(); 
+
+    </script>
+</body>
+</html>

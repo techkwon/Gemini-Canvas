@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>캐치! 티니핑 캐릭터 생성기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            /* Reverted to the previous pastel gradient background */
+            background: linear-gradient(135deg, #fbc2eb, #a6c1ee, #f6d365, #fda085);
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
+            color: #4A5568; 
+            overflow-x: hidden;
+            overflow-y: auto;
+            cursor: none; 
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            margin: 1.5rem auto; /* Reduced margin for smaller screens */
+            padding: 1.5rem; /* Reduced padding */
+            background-color: rgba(255, 255, 255, 0.98); /* Slightly more opaque */
+            border-radius: 1.5rem; 
+            box-shadow: 0 15px 35px rgba(255, 105, 180, 0.2); /* Pinkish shadow */
+            position: relative;
+            z-index: 10;
+        }
+        .section-card {
+            background-color: #fff;
+            border: 1px solid #ffc2d1; /* More pink border */
+            border-radius: 1rem; 
+            padding: 1.25rem; /* Adjusted padding */
+            margin-bottom: 1.25rem; /* Adjusted margin */
+            box-shadow: 0 6px 12px rgba(255, 105, 180, 0.1); /* Softer pink shadow */
+            opacity: 0;
+            transform: translateY(25px) scale(0.95);
+            animation: fadeInSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+
+        @keyframes fadeInSlideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .btn {
+            transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            box-shadow: 0 3px 6px rgba(222, 70, 130, 0.15); /* Pinkish shadow */
+            font-weight: 600;
+            border-radius: 0.75rem; 
+        }
+        .btn:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 5px 10px rgba(222, 70, 130, 0.25); /* Enhanced pink shadow on hover */
+        }
+        .btn:active {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow: 0 2px 4px rgba(222, 70, 130, 0.2);
+        }
+        
+        .btn-primary {
+            background-color: #ff8fab; 
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #fb6f92; 
+        }
+        
+        /* Used for multi-choice buttons like gender, hair, etc. */
+        .choice-btn {
+            background-color: #fff0f5; /* Lavender Blush - very light pink */
+            color: #c75d86; /* Darker pink text */
+            border: 2px solid #ffc2d1; /* Light pink border */
+        }
+        .choice-btn:hover {
+            background-color: #ffe4e1; /* Misty Rose - slightly darker light pink */
+            border-color: #ffb3c1; /* Medium light pink border */
+        }
+        .choice-btn.selected {
+            background-color: #ff8fab !important; /* Stronger Pink */
+            color: white !important;
+            border: 2px solid #fb6f92 !important; /* Darker Pink border */
+            box-shadow: 0 0 0 3px rgba(255, 105, 180, 0.4) !important;
+            transform: scale(1.05);
+        }
+
+        .result-card {
+            background-color: rgba(255, 240, 245, 0.97); /* LavenderBlush, slightly more opaque */
+            color: #8c435f; /* Darker, muted pink for text */
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-top: 1.5rem; /* Adjusted margin */
+            border: 3px solid #ffb3c1; /* Medium Light Pink border */
+            box-shadow: 0 8px 20px rgba(255, 105, 180, 0.25); /* Pink shadow */
+        }
+        .result-image {
+            border: 6px solid #ffb3c1; /* Medium Light Pink border */
+            border-radius: 1rem;
+            max-width: 100%;
+            min-height: 200px; /* Keep min-height */
+            max-height: 350px; /* Add max-height */
+            object-fit: contain; /* Ensure image fits well */
+            height: auto;
+            margin: 1.5rem auto;
+            display: block;
+            background-color: #fff9fb; 
+            box-shadow: 0 5px 15px rgba(222, 70, 130,0.15); /* Pinkish shadow */
+        }
+        .loading-spinner {
+            border: 6px solid rgba(255, 175, 204, 0.3); 
+            border-radius: 50%;
+            border-top: 6px solid #ff8fab; 
+            width: 50px; /* Slightly smaller */
+            height: 50px; /* Slightly smaller */
+            animation: spin 0.8s linear infinite;
+            margin: 20px auto; /* Adjusted margin */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #background-elements-container { 
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden; 
+        }
+        .background-element { 
+            position: absolute;
+            font-size: 20px; 
+            animation: float 20s infinite ease-in-out;
+        }
+        @keyframes float { 
+            0% { transform: translateY(0px) translateX(0px) scale(1) rotate(0deg); opacity: 0.2; } /* Start more transparent */
+            25% { transform: translateY(-25px) translateX(20px) scale(1.1) rotate(60deg); opacity: 0.6;}
+            50% { transform: translateY(15px) translateX(-15px) scale(0.9) rotate(120deg); opacity: 0.4;}
+            75% { transform: translateY(-20px) translateX(-25px) scale(1.05) rotate(180deg); opacity: 0.5;}
+            100% { transform: translateY(0px) translateX(0px) scale(1) rotate(240deg); opacity: 0.2;} /* End more transparent */
+        }
+
+        #custom-cursor {
+            position: fixed;
+            width: 28px; /* Slightly larger heart */
+            height: 28px;
+            /* Pink heart cursor */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FF8FAB'%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s ease-out, width 0.2s ease, height 0.2s ease;
+            display: none; 
+        }
+        
+        @media (min-width: 1024px) { 
+            #custom-cursor {
+                display: block;
+            }
+        }
+         @media (max-width: 1023px) { 
+            body {
+                cursor: auto;
+            }
+        }
+
+        .btn:hover ~ #custom-cursor, input:hover ~ #custom-cursor, button:hover ~ #custom-cursor {
+            transform: translate(-50%, -50%) scale(1.4) rotate(10deg); /* More playful hover effect for cursor */
+        }
+        
+        .error-message-card {
+            background-color: #ffebee; 
+            border: 2px solid #f44336; 
+            color: #c62828; 
+            border-radius: 0.75rem;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(244, 67, 54, 0.2);
+        }
+
+        /* Ensure responsive text sizes */
+        h1 { font-size: clamp(2rem, 5vw, 3rem); } /* Responsive heading */
+        p, label, button, input, span { font-size: clamp(0.875rem, 2.5vw, 1.125rem); } /* Responsive body text */
+        .result-card p strong, .result-card span { font-size: clamp(1rem, 3vw, 1.25rem); } /* Result text */
+
+
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-2 sm:p-4">
+    <div id="background-elements-container"></div>
+    <div id="custom-cursor"></div>
+
+    <div class="container w-full max-w-lg mx-auto my-4 sm:my-8 px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10">
+        <header class="text-center mb-6 sm:mb-8">
+            <h1 class="font-bold text-pink-500" style="text-shadow: 2px 2px 0px #fff, 3px 3px 0px rgba(255,175,204,0.5);">캐치! 티니핑 캐릭터 생성기</h1>
+            <p class="text-gray-600 mt-2 sm:mt-3">나만의 사랑스러운 티니핑을 만들어보세요!</p>
+        </header>
+
+        <div id="nameSection" class="section-card p-4 sm:p-6">
+            <label for="userName" class="block font-semibold text-gray-700 mb-2 sm:mb-3">티니핑에게 어떤 이름을 지어줄까요?</label>
+            <input type="text" id="userName" class="w-full p-2.5 sm:p-3 border-2 border-pink-200 rounded-lg shadow-sm focus:ring-pink-400 focus:border-pink-400 focus:shadow-lg" placeholder="예: 하츄핑">
+            <button id="submitNameBtn" class="btn btn-primary w-full mt-4 sm:mt-5 py-2.5 sm:py-3 rounded-lg">이름 정하기 완료!</button>
+        </div>
+
+        <div id="customizationSection" class="hidden">
+            </div>
+        
+        <div id="loadingSection" class="hidden text-center py-8 sm:py-10">
+            <p class="font-semibold text-pink-500 mb-2 sm:mb-3">티니핑 변신 중...</p>
+            <div class="loading-spinner mx-auto"></div>
+            <p class="text-gray-600 mt-2 sm:mt-3">마법의 힘으로 예쁜 티니핑을 만들고 있어요! <br> (반짝반짝... 어떤 티니핑이 나올까요?)</p>
+        </div>
+
+        <div id="resultSection" class="hidden text-center">
+            <h2 id="resultTitle" class="font-bold mb-4 sm:mb-5 text-pink-600" style="text-shadow: 1px 1px 0px #fff;"></h2>
+            <img id="characterImage" src="https://placehold.co/300x300/fff0f3/FFC0CB?text=티니핑+준비중&font=jua" alt="티니핑 이미지" class="result-image">
+            <div class="result-card p-4 sm:p-6">
+                <p class="mb-2 sm:mb-3"><strong>💖 티니핑 이름:</strong> <span id="teeniepingNameDisplay" class="font-bold text-pink-500"></span></p>
+                <p class="mb-2 sm:mb-3"><strong>✨ 특징:</strong> <span id="teeniepingFeatureDisplay" class="font-bold text-pink-500"></span></p>
+                <p class="mb-2 sm:mb-3"><strong>🎀 마법 아이템:</strong> <span id="magicItemDisplay" class="font-bold text-pink-500"></span></p>
+                <p class="mt-3 sm:mt-4 leading-relaxed"><strong>🌟 성격:</strong> <span id="personalityDisplay"></span></p>
+            </div>
+            <button id="retryBtn" class="btn btn-primary w-full mt-6 sm:mt-8 py-3 sm:py-3.5 rounded-lg">다른 티니핑 만들기!</button>
+        </div>
+
+        <div id="errorMessage" class="hidden mt-4 sm:mt-5 p-3 sm:p-4 error-message-card">
+            </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const nameSection = document.getElementById('nameSection');
+        const customizationSection = document.getElementById('customizationSection');
+        const loadingSection = document.getElementById('loadingSection');
+        const resultSection = document.getElementById('resultSection');
+        
+        const submitNameBtn = document.getElementById('submitNameBtn');
+        const userNameInput = document.getElementById('userName');
+        
+        const resultTitle = document.getElementById('resultTitle');
+        const characterImage = document.getElementById('characterImage');
+        const teeniepingNameDisplay = document.getElementById('teeniepingNameDisplay');
+        const teeniepingFeatureDisplay = document.getElementById('teeniepingFeatureDisplay');
+        const magicItemDisplay = document.getElementById('magicItemDisplay');
+        const personalityDisplay = document.getElementById('personalityDisplay');
+
+        const retryBtn = document.getElementById('retryBtn');
+        const errorMessageDiv = document.getElementById('errorMessage');
+
+        const backgroundElementsContainer = document.getElementById('background-elements-container');
+        const customCursor = document.getElementById('custom-cursor');
+
+        // Background elements (stars/hearts/etc.)
+        const numElements = 25; // More elements for a richer background
+        const elementTypes = ['⭐', '💖', '✨', '🌸', '🎀', '💕', '🌟']; 
+        for (let i = 0; i < numElements; i++) {
+            const element = document.createElement('div');
+            element.classList.add('background-element');
+            element.textContent = elementTypes[Math.floor(Math.random() * elementTypes.length)];
+            const size = Math.random() * 18 + 12; 
+            element.style.fontSize = `${size}px`;
+            element.style.left = `${Math.random() * 100}vw`;
+            element.style.top = `${Math.random() * 100}vh`;
+            element.style.animationDelay = `${Math.random() * 12}s`; 
+            element.style.animationDuration = `${Math.random() * 12 + 18}s`; 
+            const pastelColors = [
+                'rgba(255,192,203,0.7)', 'rgba(255,179,193,0.7)', 'rgba(251,111,146,0.6)', 
+                'rgba(255,223,230,0.7)', 'rgba(255, 209, 220, 0.7)'
+            ]; // More pink shades
+            element.style.color = pastelColors[Math.floor(Math.random() * pastelColors.length)];
+            backgroundElementsContainer.appendChild(element);
+        }
+
+        // Custom cursor logic
+        if (window.matchMedia("(min-width: 1024px)").matches) {
+            document.addEventListener('mousemove', (e) => {
+                customCursor.style.left = `${e.clientX}px`;
+                customCursor.style.top = `${e.clientY}px`;
+            });
+            document.addEventListener('mousedown', () => customCursor.style.transform = 'translate(-50%, -50%) scale(0.8) rotate(-15deg)');
+            document.addEventListener('mouseup', () => customCursor.style.transform = 'translate(-50%, -50%) scale(1) rotate(0deg)');
+        }
+
+        // Teenieping customization questions
+        // Define outfit options separately for male, female, and all
+        const femaleOutfitOptions = [
+            { text: "반짝이는 별빛 요정 드레스", value: "sparkling starlight fairy dress" },
+            { text: "달콤한 프릴 케이크 원피스", value: "sweet frilly cake one-piece" },
+            { text: "하늘하늘 리본 체조복", value: "airy ribbon gymnastic suit" },
+            { text: "꿈나라 공주님 무도회 드레스", value: "dreamland princess ball gown" },
+            { text: "꽃잎 샤랄라 발레리나 의상", value: "petal shalalala ballerina costume"}
+        ];
+
+        const maleOutfitOptions = [
+            { text: "용감한 꼬마왕자님 정장", value: "brave little prince suit" },
+            { text: "신나는 탐험가 모험복", value: "exciting explorer adventure clothes" },
+            { text: "귀여운 동물 파일럿 유니폼", value: "cute animal pilot uniform" },
+            { text: "꼬마 마법사 로브와 모자", value: "little wizard robe and hat" },
+            { text: "장난꾸러기 요정 점프수트", value: "mischievous fairy jumpsuit"}
+        ];
+        
+        const allOutfitOptions = [...new Set([...femaleOutfitOptions, ...maleOutfitOptions].map(JSON.stringify))].map(JSON.parse);
+
+
+        const teeniepingQuestions = [
+            {
+                id: 'gender',
+                text: "티니핑의 성별을 선택해주세요!",
+                options: [
+                    { text: "남자아이 티니핑", value: "male" },
+                    { text: "여자아이 티니핑", value: "female" },
+                    { text: "비밀 티니핑", value: "secret" }
+                ]
+            },
+            {
+                id: 'hairColor',
+                text: "티니핑의 헤어 색상을 골라주세요! 어떤 파스텔톤 색상을 좋아하나요?",
+                options: [
+                    { text: "사랑스러운 딸기우유 핑크", value: "strawberry milk pink" },
+                    { text: "상큼톡톡 민트초코칩", value: "mint chocolate chip" },
+                    { text: "꿈꾸는듯한 라벤더 바이올렛", value: "dreamy lavender violet" },
+                    { text: "햇살가득 레몬옐로", value: "sunshine lemon yellow" },
+                    { text: "뭉게구름 스카이블루", value: "fluffy sky blue" }
+                ]
+            },
+            {
+                id: 'animalEars',
+                text: "티니핑에게 어떤 동물의 귀를 달아줄까요?",
+                options: [
+                    { text: "쫑긋쫑긋 아기토끼 귀", value: "baby rabbit" },
+                    { text: "새침한 아기고양이 귀", value: "kitten" },
+                    { text: "동글동글 아기곰 귀", value: "teddy bear" },
+                    { text: "앙큼상큼 아기여우 귀", value: "baby fox" },
+                    { text: "사랑스러운 아기강아지 귀", value: "puppy" }
+                ]
+            },
+            {
+                id: 'outfit',
+                text: "티니핑에게 어떤 옷을 입힐까요? 생각만 해도 두근두근!",
+                // Options will be dynamically set based on gender
+            }
+        ];
+
+        let userSelections = {}; 
+        let currentQuestionIndex = 0;
+        const apiKey = ""; // IMPORTANT: Keep this empty for Canvas environment auto-key injection
+
+        function displayError(message) {
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.classList.remove('hidden');
+            errorMessageDiv.style.opacity = '0';
+            setTimeout(() => { errorMessageDiv.style.opacity = '1'; }, 50);
+            setTimeout(() => { 
+                errorMessageDiv.style.opacity = '0';
+                setTimeout(() => errorMessageDiv.classList.add('hidden'), 500);
+            }, 5000); 
+        }
+
+        function showNextSection(currentSection, nextSection) {
+            currentSection.style.animation = 'fadeOutSlideUp 0.4s forwards';
+            setTimeout(() => {
+                currentSection.classList.add('hidden');
+                currentSection.style.animation = ''; 
+
+                nextSection.classList.remove('hidden');
+                void nextSection.offsetWidth; 
+                nextSection.style.animation = 'fadeInSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+            }, 400);
+        }
+        
+        const styleSheet = document.createElement("style");
+        styleSheet.type = "text/css";
+        styleSheet.innerText = `
+            @keyframes fadeOutSlideUp {
+                from { opacity: 1; transform: translateY(0) scale(1); }
+                to { opacity: 0; transform: translateY(-25px) scale(0.95); }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+        submitNameBtn.addEventListener('click', () => {
+            const name = userNameInput.value.trim();
+            if (!name) {
+                displayError("티니핑의 이름을 지어줘야 해요! 그래야 마법이 시작된답니다!");
+                return;
+            }
+            userSelections = { name }; 
+            currentQuestionIndex = 0; 
+            showNextSection(nameSection, customizationSection);
+            renderCurrentCustomizationQuestion();
+        });
+
+        function renderCurrentCustomizationQuestion() {
+            customizationSection.innerHTML = ''; 
+            if (currentQuestionIndex < teeniepingQuestions.length) {
+                const q = teeniepingQuestions[currentQuestionIndex];
+                let currentOptions = q.options;
+
+                // Dynamically set outfit options based on gender
+                if (q.id === 'outfit') {
+                    const selectedGender = userSelections.gender;
+                    if (selectedGender === 'male') {
+                        currentOptions = maleOutfitOptions;
+                    } else if (selectedGender === 'female') {
+                        currentOptions = femaleOutfitOptions;
+                    } else { // secret or undefined
+                        currentOptions = allOutfitOptions;
+                    }
+                }
+
+
+                const questionDiv = document.createElement('div');
+                questionDiv.classList.add('section-card', 'p-4', 'sm:p-6');
+                questionDiv.innerHTML = `
+                    <p class="text-sm sm:text-base font-semibold mb-1 text-pink-400">💖 티니핑 꾸미기 ${currentQuestionIndex + 1}/${teeniepingQuestions.length} 💖</p>
+                    <p class="text-lg sm:text-xl mb-3 sm:mb-4 font-medium text-gray-700">${q.text}</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        ${currentOptions.map(opt => `
+                            <button data-question-id="${q.id}" data-value="${opt.value}" class="w-full text-left p-3 sm:p-3.5 border rounded-lg shadow-sm choice-btn btn text-sm sm:text-base">
+                                ${opt.text}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+                customizationSection.appendChild(questionDiv);
+                void questionDiv.offsetWidth; 
+                questionDiv.style.animation = 'fadeInSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+
+                document.querySelectorAll('.choice-btn').forEach(button => {
+                    button.addEventListener('click', handleCustomizationOptionSelect);
+                });
+            } else {
+                showNextSection(customizationSection, loadingSection);
+                generateAndShowTeenieping();
+            }
+        }
+
+        function handleCustomizationOptionSelect(event) {
+            const selectedButton = event.currentTarget;
+            const questionId = selectedButton.dataset.questionId; 
+            const value = selectedButton.dataset.value;
+            userSelections[questionId] = value;
+
+            const parentQuestionCard = selectedButton.closest('.section-card');
+            parentQuestionCard.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove('selected'); 
+                if (btn !== selectedButton) { // Keep selected button's style, dim others
+                    btn.classList.add('opacity-50');
+                }
+            });
+            selectedButton.classList.add('selected');
+            selectedButton.classList.remove('opacity-50');
+
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (parentQuestionCard) {
+                    parentQuestionCard.style.animation = 'fadeOutSlideUp 0.4s forwards';
+                    setTimeout(() => {
+                        parentQuestionCard.remove(); 
+                        renderCurrentCustomizationQuestion(); 
+                    }, 400);
+                } else {
+                     renderCurrentCustomizationQuestion();
+                }
+            }, 300); // Slightly faster transition
+        }
+
+        const teeniepingCorePromptBase = `Adorable 3D Teenieping [GENDER_TAG] fairy character in Korean Catch Teenieping style:
+- Style: Chibi proportions, large head, exceptionally cute face.
+- Eyes: Big, sparkling, expressive anime eyes with multiple star-shaped and circular reflections, long eyelashes.
+- Hair: Pastel [COLOR] hair, styled with ribbons, bows, or small flowers. Has [ANIMAL_EAR_STYLE] ears seamlessly integrated or as a headband.
+- Outfit: Wearing an elaborate, frilly, layered [OUTFIT_STYLE] in various pastel shades (especially pinks, lavenders, mints, baby blues, yellows), adorned with cute decorations like hearts, stars, bows, lace, and tiny gems.
+- Wings: Delicate, transparent, iridescent fairy wings with subtle glitter.
+- Accessory: Holding a tiny, cute character charm or a miniature magical accessory (e.g., a star wand, a flower staff, a tiny teacup, a small musical instrument).
+- Rendering: Soft, high-quality 3D rendering, smooth textures, pastel color palette dominant. Bright, cheerful, magical mood.
+- Background: Clean white or a very soft, dreamy pastel gradient background (e.g., light pink to light blue, or a soft rainbow).
+- Decorative Elements: Subtle floating elements like tiny stars, glowing particles, small hearts, or flower petals around the character.
+- Overall: Quintessential Korean animation fairy style, high quality, highly detailed, polished, exceptionally adorable and charming.`;
+
+        async function generateAndShowTeenieping() {
+            resultSection.classList.add('hidden'); 
+            characterImage.src = "https://placehold.co/300x300/fff0f3/FFC0CB?text=티니핑+변신중...&font=jua";
+            characterImage.alt = "티니핑 이미지 생성 중...";
+            resultTitle.textContent = `짜잔! ${userSelections.name} 티니핑 등장!`;
+
+            let genderTag = ""; 
+            let genderDesc = "비밀스러운"; 
+            if (userSelections.gender === "male") {
+                genderTag = "boy"; // Explicitly set for male
+                genderDesc = "용감한 남자아이";
+            } else if (userSelections.gender === "female") {
+                genderTag = "girl"; // Explicitly set for female
+                genderDesc = "사랑스러운 여자아이";
+            }
+            // If 'secret', genderTag remains empty, leading to a more neutral depiction if the model interprets it that way.
+            
+            let animalEarDescription = "cute animal ears"; // Default description
+            if (userSelections.animalEars) {
+                animalEarDescription = `${userSelections.animalEars} ears`; 
+            }
+
+            const selectedOutfit = userSelections.outfit || "a very cute and adorable outfit";
+
+
+            let imagePrompt = teeniepingCorePromptBase
+                .replace("[GENDER_TAG]", genderTag.trim()) // Use trim to remove potential leading/trailing spaces if genderTag is empty
+                .replace("[COLOR]", userSelections.hairColor || "pink") 
+                .replace("[ANIMAL_EAR_STYLE]", animalEarDescription) 
+                .replace("[OUTFIT_STYLE]", selectedOutfit); 
+            
+            // If gender is secret, we might want to make the GENDER_TAG part of the prompt less prominent or remove it
+            if (userSelections.gender === "secret") {
+                imagePrompt = imagePrompt.replace("Teenieping [GENDER_TAG] fairy character", "Teenieping fairy character"); // Make it more neutral
+            }
+
+
+            console.log("Final Image Prompt for Generation:", imagePrompt);
+
+            let imageGenerated = false;
+            try {
+                const imageApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+                const imageResponse = await fetch(imageApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ instances: [{ prompt: imagePrompt }], parameters: { "sampleCount": 1, "aspectRatio": "1:1" } }) 
+                });
+                if (!imageResponse.ok) {
+                    console.error("Image API Error Response Status:", imageResponse.status); 
+                    const responseText = await imageResponse.text(); 
+                    console.error("Image API Error Response Text:", responseText); 
+                    let errorMsg = `Status: ${imageResponse.status}`;
+                    try {
+                        const errorData = JSON.parse(responseText); 
+                        errorMsg = errorData.error?.message || errorMsg; 
+                    } catch (e) {
+                        if (responseText && responseText.length < 200 && responseText.trim() !== "") {
+                           errorMsg = `${errorMsg} - ${responseText.substring(0,100)}...`; 
+                        }
+                    }
+                    throw new Error(`이미지 생성 API 오류: ${errorMsg}`);
+                }
+                const imageData = await imageResponse.json();
+                if (imageData.predictions && imageData.predictions.length > 0 && imageData.predictions[0].bytesBase64Encoded) {
+                    characterImage.src = `data:image/png;base64,${imageData.predictions[0].bytesBase64Encoded}`;
+                    imageGenerated = true;
+                } else {
+                    console.error("Image API Success Response but no image data:", imageData);
+                    throw new Error("API 응답에서 이미지 데이터를 찾을 수 없습니다.");
+                }
+            } catch (error) {
+                console.error('Error generating image:', error);
+                characterImage.src = "https://placehold.co/300x300/fce4ec/c2185b?text=이미지+생성+실패&font=jua";
+                displayError(`티니핑 이미지 생성 중 오류가 발생했어요: ${error.message}. 잠시 후 다시 시도해주세요!`);
+            }
+
+            const textGenPrompt = `
+                사용자가 선택한 티니핑 정보:
+                - 이름: ${userSelections.name}
+                - 성별: ${genderDesc}
+                - 헤어 색상: ${userSelections.hairColor}
+                - 동물 귀: ${userSelections.animalEars}
+                - 의상: ${userSelections.outfit}
+
+                위 정보를 바탕으로, 아주 귀엽고 사랑스러운 캐치! 티니핑 캐릭터 설명을 생성해주세요.
+                이름은 사용자가 입력한 이름에 '핑'을 붙이거나, 특징을 살려 창의적으로 지어주세요. (예: '${userSelections.name}핑', '핑크${userSelections.animalEars}핑')
+                특징, 마법 아이템, 성격은 각 선택지와 어울리면서도 매우 사랑스럽고 동화적인 느낌으로 작성해주세요.
+                결과는 반드시 다음 JSON 형식이어야 합니다:
+                {
+                  "teeniepingName": "최종 티니핑 이름",
+                  "teeniepingFeature": "캐릭터의 주요 특징 (예: '${userSelections.hairColor}색 ${userSelections.animalEars} 귀를 가진 ${genderDesc} 감정의 요정')",
+                  "magicItem": "캐릭터가 가진 특별한 마법 아이템 이름 (예: '반짝이는 ${userSelections.hairColor} 하트 요술봉', '무지개빛 ${userSelections.animalEars} 별가루 주머니')",
+                  "personality": "캐릭터의 성격을 한두 문장으로 귀엽게 묘사 (예: '${userSelections.outfit}을 입고 세상을 탐험하는 것을 좋아하는 호기심 많고 다정한 티니핑이에요.')"
+                }
+            `;
+            
+            console.log("Text Gen Prompt:", textGenPrompt);
+
+            try {
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: textGenPrompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                "teeniepingName": { "type": "STRING" },
+                                "teeniepingFeature": { "type": "STRING" },
+                                "magicItem": { "type": "STRING" },
+                                "personality": { "type": "STRING" }
+                            },
+                            required: ["teeniepingName", "teeniepingFeature", "magicItem", "personality"]
+                        }
+                    }
+                };
+                const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const textResponse = await fetch(textApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                 if (!textResponse.ok) {
+                    console.error("Text API Error Response Status:", textResponse.status); 
+                    const responseText = await textResponse.text(); 
+                    console.error("Text API Error Response Text:", responseText); 
+                    let errorMsg = `Status: ${textResponse.status}`;
+                    try {
+                        const errorData = JSON.parse(responseText); 
+                        errorMsg = errorData.error?.message || errorMsg; 
+                    } catch (e) {
+                        if (responseText && responseText.length < 200 && responseText.trim() !== "") {
+                           errorMsg = `${errorMsg} - ${responseText.substring(0,100)}...`; 
+                        }
+                    }
+                    throw new Error(`티니핑 정보 생성 API 오류: ${errorMsg}`);
+                }
+                const textData = await textResponse.json();
+                if (textData.candidates && textData.candidates[0]?.content?.parts[0]?.text) {
+                    const resultJson = JSON.parse(textData.candidates[0].content.parts[0].text);
+                    teeniepingNameDisplay.textContent = resultJson.teeniepingName;
+                    teeniepingFeatureDisplay.textContent = resultJson.teeniepingFeature;
+                    magicItemDisplay.textContent = resultJson.magicItem;
+                    personalityDisplay.textContent = resultJson.personality;
+                } else {
+                    console.error("Text API Success Response but no text data:", textData);
+                    throw new Error("API 응답에서 티니핑 상세 정보를 찾을 수 없습니다.");
+                }
+            } catch (error) {
+                console.error('Error generating text data:', error);
+                teeniepingNameDisplay.textContent = userSelections.name + "핑"; // Fallback
+                teeniepingFeatureDisplay.textContent = "마법의 오류로 정보를 불러오지 못했어요!";
+                magicItemDisplay.textContent = "반짝이는 데이터 복구 스틱";
+                personalityDisplay.textContent = "지금은 조금 당황했지만, 이 티니핑은 분명 아주 특별할 거예요!";
+                displayError(`티니핑 상세 정보 생성 중 오류가 발생했어요: ${error.message}. 그래도 걱정 마세요, 상상 속 티니핑은 완벽하니까요!`);
+            } finally {
+                showNextSection(loadingSection, resultSection);
+            }
+        }
+
+        retryBtn.addEventListener('click', () => {
+            showNextSection(resultSection, nameSection);
+            userNameInput.value = '';
+            userSelections = {};
+            currentQuestionIndex = 0;
+            characterImage.src = "https://placehold.co/300x300/fff0f3/FFC0CB?text=티니핑+준비중&font=jua";
+            characterImage.alt = "티니핑 이미지";
+            teeniepingNameDisplay.textContent = "";
+            teeniepingFeatureDisplay.textContent = "";
+            magicItemDisplay.textContent = "";
+            personalityDisplay.textContent = "";
+            errorMessageDiv.classList.add('hidden');
+            errorMessageDiv.style.opacity = '0';
+        });
+        
+        window.addEventListener('load', () => {
+            nameSection.style.animation = 'fadeInSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+        });
+
+    </script>
+</body>
+</html>

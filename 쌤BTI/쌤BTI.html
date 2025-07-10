@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>쌤BTI - AI 교사 브랜딩 진단</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" xintegrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoVBL5gI9kLmbG4dTYdHoogLayFG2g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" xintegrity="sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNTlrdUmTzrDgektczlKNRRhy5X5AAOnx5S09ydFYWWNSfcEqDTTHgtNA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <style>
+        body {
+            font-family: 'Gowun Dodum', sans-serif;
+        }
+        .page {
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        .page-hidden {
+            opacity: 0;
+            transform: scale(0.95);
+            position: absolute;
+            width: 100%;
+            pointer-events: none;
+        }
+        .page-visible {
+            opacity: 1;
+            transform: scale(1);
+            position: relative;
+        }
+        .loader {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #14b8a6;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-amber-50 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-lg mx-auto">
+
+        <!-- 시작 페이지 -->
+        <div id="start-page" class="page page-visible">
+            <div class="bg-white p-8 rounded-2xl shadow-lg text-center">
+                <h1 class="text-4xl font-bold text-teal-700 mb-4">쌤BTI</h1>
+                <p class="text-lg text-gray-600 mb-2">나는 어떤 선생님일까?</p>
+                <p class="text-gray-500 mb-8">AI가 나의 교육 브랜드를 분석하고 마스코트까지 그려드려요!</p>
+                <button id="start-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl text-lg transition duration-300 shadow-md transform hover:scale-105">
+                    내 브랜딩 진단하기
+                </button>
+                 <button id="gallery-btn" class="w-full mt-4 bg-white border border-teal-600 text-teal-600 hover:bg-teal-50 font-bold py-3 px-4 rounded-xl text-lg transition duration-300 transform hover:scale-105">
+                    다른 쌤들 결과보기
+                </button>
+            </div>
+        </div>
+
+        <!-- 설문 페이지 -->
+        <div id="question-page" class="page page-hidden">
+             <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+                    <div id="progress-bar" class="bg-teal-500 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <div id="question-container">
+                    <h2 id="question-text" class="text-xl sm:text-2xl font-bold mb-6 text-center h-24 flex items-center justify-center"></h2>
+                    <div id="answer-options" class="space-y-4"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로딩 페이지 -->
+        <div id="loading-page" class="page page-hidden">
+            <div class="bg-white p-8 rounded-2xl shadow-lg flex flex-col items-center text-center">
+                <div class="loader mb-6"></div>
+                <h2 id="loading-text" class="text-2xl font-bold text-teal-700 mb-2">AI가 분석 중입니다</h2>
+                <p class="text-gray-600">선생님만을 위한 리포트를 만들고 있어요.</p>
+            </div>
+        </div>
+
+        <!-- 결과 페이지 -->
+        <div id="result-page" class="page page-hidden">
+            <div id="result-content" class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg"></div>
+            <div id="result-buttons" class="mt-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button id="download-pdf-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl transition duration-300 transform hover:scale-105">PDF로 저장</button>
+                    <button id="download-img-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition duration-300 transform hover:scale-105">이미지로 저장</button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button id="go-to-gallery-btn" class="w-full bg-white border border-teal-600 text-teal-600 hover:bg-teal-50 font-bold py-3 px-4 rounded-xl transition duration-300 transform hover:scale-105">갤러리 보기</button>
+                    <button id="restart-btn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-xl transition duration-300 transform hover:scale-105">처음으로</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 갤러리 페이지 -->
+        <div id="gallery-page" class="page page-hidden">
+            <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-lg">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-teal-700">브랜딩 갤러리</h2>
+                    <button id="back-to-start-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg transition">
+                        처음으로
+                    </button>
+                </div>
+                <div id="gallery-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 상세 보기 모달 -->
+    <div id="detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 invisible opacity-0 pointer-events-none transition-opacity duration-300">
+        <div id="modal-content-container" class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto transform scale-95 transition-transform duration-300">
+            <div id="modal-content-body" class="p-6 sm:p-8"></div>
+            <div class="p-4 bg-gray-50 text-right rounded-b-2xl">
+                <button id="close-modal-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg transition">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, query, serverTimestamp, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO_KEY", authDomain: "DEMO.firebaseapp.com", projectId: "DEMO" };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const reportsCollection = collection(db, 'artifacts', appId, 'public', 'data', 'reports');
+
+        (async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase Authentication Error:", error);
+            }
+        })();
+
+        const pages = { start: document.getElementById('start-page'), question: document.getElementById('question-page'), loading: document.getElementById('loading-page'), result: document.getElementById('result-page'), gallery: document.getElementById('gallery-page') };
+        const startBtn = document.getElementById('start-btn');
+        const galleryBtn = document.getElementById('gallery-btn');
+        const backToStartBtn = document.getElementById('back-to-start-btn');
+        const progressBar = document.getElementById('progress-bar');
+        const questionText = document.getElementById('question-text');
+        const answerOptions = document.getElementById('answer-options');
+        const resultContent = document.getElementById('result-content');
+        const loadingText = document.getElementById('loading-text');
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
+        const downloadImgBtn = document.getElementById('download-img-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const goToGalleryBtn = document.getElementById('go-to-gallery-btn');
+        const galleryGrid = document.getElementById('gallery-grid');
+        const detailModal = document.getElementById('detail-modal');
+        const modalContentContainer = document.getElementById('modal-content-container');
+        const modalContentBody = document.getElementById('modal-content-body');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+
+        const questions = [
+            { id: 'Q1', type: 'objective', text: '저는 수업 시간에 주로 어떤 스타일을 가장 많이 사용하나요?', options: [ { text: '학생들에게 "왜 그렇게 생각해?"라며 질문을 많이 던진다.', value: '(A) 학생들에게 "왜 그렇게 생각해?"라며 질문을 많이 던진다.' }, { text: '"다 같이 해볼까?"라며 모둠 활동과 협동을 강조한다.', value: '(B) "다 같이 해볼까?"라며 모둠 활동과 협동을 강조한다.' }, { text: '재미있는 이야기나 저만의 비유를 들어 개념을 설명한다.', value: '(C) 재미있는 이야기나 저만의 비유를 들어 개념을 설명한다.' }, { text: '원리와 근거를 바탕으로 차분하고 논리적으로 설명한다.', value: '(D) 원리와 근거를 바탕으로 차분하고 논리적으로 설명한다.' }, { text: '직접 시범을 보이거나, 학생들과 함께 무언가를 만들어본다.', value: '(E) 직접 시범을 보이거나, 학생들과 함께 무언가를 만들어본다.' } ] },
+            { id: 'Q2', type: 'objective', text: '저 자신을 하나의 상징(동물, 사물 등)에 비유한다면, 어디에 가장 가깝다고 느끼나요?', options: [ { text: '지혜를 탐구하는 \'부엉이\'', value: '(A) 지혜를 탐구하는 \'부엉이\'' }, { text: '열정적으로 목표를 향해 이끄는 \'호랑이\'', value: '(B) 열정적으로 목표를 향해 이끄는 \'호랑이\'' }, { text: '묵묵히 곁에서 지지해주는 \'큰 나무\'', value: '(C) 묵묵히 곁에서 지지해주는 \'큰 나무\'' }, { text: '늘 새로운 방법을 시도하는 \'탐험가\'', value: '(D) 늘 새로운 방법을 시도하는 \'탐험가\'' }, { text: '다양한 지식을 융합하여 결과를 만드는 \'요리사\'', value: '(E) 다양한 지식을 융합하여 결과를 만드는 \'요리사\'' } ] },
+            { id: 'Q3', type: 'subjective', text: '학생들이 저를 어떤 교사로 기억해주면 가장 기쁠까요? (3가지 키워드로)', placeholder: '예: #소통 #재미 #성장' },
+            { id: 'Q4', type: 'subjective', text: '스스로 생각하는 저의 가장 큰 교육적 강점이나 전문 분야는 무엇인가요?', placeholder: '자유롭게 작성해주세요.' },
+            { id: 'Q5', type: 'subjective', text: '교사로서 성장하기 위해 요즘 가장 고민하고 있거나, 발전시키고 싶은 부분은 무엇인가요?', placeholder: '자유롭게 작성해주세요.' }
+        ];
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+
+        function showPage(pageId) {
+            Object.keys(pages).forEach(key => {
+                pages[key].classList.remove('page-visible');
+                pages[key].classList.add('page-hidden');
+            });
+            const targetPage = pages[pageId];
+            targetPage.classList.remove('page-hidden');
+            setTimeout(() => targetPage.classList.add('page-visible'), 10);
+        }
+
+        function displayQuestion() {
+            const question = questions[currentQuestionIndex];
+            questionText.textContent = question.text;
+            answerOptions.innerHTML = '';
+            if (question.type === 'objective') {
+                question.options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.innerHTML = option.text;
+                    button.classList.add('w-full', 'border', 'border-gray-300', 'p-3', 'rounded-lg', 'text-left', 'hover:bg-amber-100', 'transition', 'duration-200', 'transform', 'hover:scale-105');
+                    button.onclick = () => handleAnswer(question.id, option.value);
+                    answerOptions.appendChild(button);
+                });
+            } else {
+                const textarea = document.createElement('textarea');
+                textarea.id = `q-input-${question.id}`;
+                textarea.placeholder = question.placeholder;
+                textarea.rows = 4;
+                textarea.classList.add('w-full', 'border', 'border-gray-300', 'p-3', 'rounded-lg', 'focus:ring-2', 'focus:ring-teal-500', 'focus:border-teal-500', 'transition');
+                answerOptions.appendChild(textarea);
+                const nextButton = document.createElement('button');
+                nextButton.textContent = '다음';
+                nextButton.classList.add('w-full', 'bg-teal-600', 'hover:bg-teal-700', 'text-white', 'font-bold', 'py-3', 'px-4', 'rounded-xl', 'mt-4', 'transform', 'hover:scale-105', 'transition');
+                nextButton.onclick = () => {
+                    const value = textarea.value.trim();
+                    if (value) handleAnswer(question.id, value); else alert('답변을 입력해주세요.');
+                };
+                answerOptions.appendChild(nextButton);
+            }
+            progressBar.style.width = `${((currentQuestionIndex) / questions.length) * 100}%`;
+        }
+
+        function handleAnswer(questionId, answerValue) {
+            userAnswers[questionId] = answerValue;
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                displayQuestion();
+            } else {
+                showPage('loading');
+                startAnalysis();
+            }
+        }
+        
+        async function startAnalysis() {
+            try {
+                loadingText.textContent = 'AI가 성향을 분석중입니다...';
+                const textPrompt = getTextAnalysisPrompt();
+                const textResult = await callTextAPI(textPrompt);
+
+                loadingText.textContent = 'AI가 마스코트를 그리고 있어요...';
+                const imagePrompt = textResult.image_prompt;
+                const imageUrl = await callImageAPI(imagePrompt);
+                
+                const compressedImageUrl = await compressImage(imageUrl, 0.7);
+                await saveResultToFirebase(textResult, compressedImageUrl);
+                
+                displayResult(textResult, imageUrl);
+
+            } catch (error) {
+                console.error("Error:", error);
+                displayError(error.message);
+            }
+        }
+        
+        function compressImage(base64Str, quality) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.src = base64Str;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.onerror = (err) => {
+                    console.error("Image compression error", err);
+                    reject(new Error("이미지 압축에 실패했습니다."));
+                };
+            });
+        }
+        
+        function getTextAnalysisPrompt() {
+            return `
+# ROLE
+당신은 대한민국 교사들의 개인 브랜딩을 돕는 전문 컨설턴트입니다. 당신의 임무는 교사가 제출한 설문 답변을 깊이 있게 분석하여, 긍정적이고 통찰력 넘치는 개인 맞춤형 브랜딩 리포트를 생성하는 것입니다.
+# RULES
+1.  **JSON 출력 엄수**: 반드시 지정된 JSON 형식으로만 응답해야 합니다. 다른 설명이나 인사말, 코드 블록 마크다운(\`\`\`json)을 절대 포함하지 마세요. 오직 유효한 JSON 객체만 출력해야 합니다.
+2.  **답변 기반 분석**: 모든 분석 결과는 사용자가 입력한 답변에 명확한 근거를 두어야 합니다.
+3.  **긍정적이고 구체적인 언어**: '약점'이나 '단점' 대신 '성장점(Growth Point)'이라는 긍정적인 표현을 사용하세요.
+4.  **독창적인 결과물**: 사용자의 답변을 조합하여 세상에 하나뿐인 독창적인 캐릭터 이름과 슬로건을 창조하세요.
+5.  **영문 이미지 프롬프트 생성**: 분석된 캐릭터 설명을 바탕으로, 이미지 생성 AI가 그림을 그릴 수 있도록 상세하고 창의적인 영문 프롬프트를 'image_prompt' 필드에 생성해야 합니다.
+# OUTPUT_STRUCTURE
+{
+  "character": { "name": "AI가 생성한 캐릭터 이름", "description": "AI가 생성한 캐릭터 상세 설명." },
+  "slogan": "AI가 생성한 개인 맞춤형 슬로건",
+  "strengths": [ "AI가 분석한 강점 1", "AI가 분석한 강점 2" ],
+  "growth_point": { "title": "AI가 제안하는 성장점의 제목", "description": "AI가 제안하는 성장점에 대한 구체적인 설명" },
+  "image_prompt": "A detailed, descriptive English prompt for an image generation AI. (e.g., 'A friendly, wise owl wearing a graduation cap, holding a glowing book, cartoon style, warm and inviting colors, clean vector art')"
+}
+# EXAMPLE_1
+## INPUT:
+[사용자 설문 답변]
+Q1. 수업 스타일: (C) 재미있는 이야기나 저만의 비유를 들어 개념을 설명한다.
+Q2. 자기 비유: (E) 다양한 지식을 융합하여 결과를 만드는 '요리사'
+Q3. 기억되고 싶은 키워드: #소통 #재미 #성장
+Q4. 나의 강점: 학생들이 어려운 개념도 제 이야기를 들으면 쉽게 이해한다고 말해줄 때 가장 뿌듯합니다.
+Q5. 고민/성장점: 가끔 너무 재미 위주로 가서, 핵심 지식을 놓치는 학생이 있을까 봐 걱정됩니다.
+## OUTPUT:
+{
+  "character": { "name": "지식의 맛을 창조하는 유쾌한 셰프", "description": "다양한 지식을 '요리사'처럼 융합하고, '재미있는 이야기'라는 특별한 레시피로 학생들이 지식의 맛을 쉽게 느끼도록 돕습니다. 딱딱한 지식도 선생님의 손을 거치면 즐거운 요리가 됩니다." },
+  "slogan": "세상 모든 지식에 재미 한 스푼, 성장 두 스푼!",
+  "strengths": [ "복잡한 개념을 흥미로운 스토리로 풀어내는 탁월한 비유 능력.", "학생들이 '재미'를 느끼며 자발적으로 '성장'하도록 이끄는 긍정적 학습 환경 조성." ],
+  "growth_point": { "title": "메인 디시의 깊이를 더하는 '오늘의 핵심' 레시피", "description": "유쾌한 코스 요리 마지막에 '오늘의 핵심 지식'이라는 메인 디시를 명확히 짚어주는 활동을 추가해보세요. 수업 끝 5분, '오늘의 셰프 추천' 코너를 통해 재미와 학습의 균형을 완벽하게 맞출 수 있습니다." },
+  "image_prompt": "A cheerful and friendly chef character, tossing glowing books and pencils in a frying pan. The chef is wearing a classic white chef's hat and apron. Whimsical cartoon style, vibrant colors, on a clean white background. 3D render."
+}
+# REAL_REQUEST
+## INPUT:
+[사용자 설문 답변]
+Q1. 수업 스타일: ${userAnswers.Q1}
+Q2. 자기 비유: ${userAnswers.Q2}
+Q3. 기억되고 싶은 키워드: ${userAnswers.Q3}
+Q4. 나의 강점: ${userAnswers.Q4}
+Q5. 고민/성장점: ${userAnswers.Q5}
+## OUTPUT:
+`;
+        }
+
+        async function callTextAPI(prompt) {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+            if (!response.ok) throw new Error(`텍스트 분석 API 오류: ${response.status}`);
+            const result = await response.json();
+            if (result.candidates && result.candidates.length > 0) {
+                const text = result.candidates[0].content.parts[0].text;
+                const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                return JSON.parse(cleanedText);
+            } else { throw new Error('AI로부터 텍스트 분석 결과를 받지 못했습니다.'); }
+        }
+
+        async function callImageAPI(prompt) {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+            const payload = { instances: [{ prompt: prompt }], parameters: { "sampleCount": 1 } };
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error(`이미지 생성 API 오류: ${response.status}`);
+            const result = await response.json();
+            if (result.predictions && result.predictions.length > 0) {
+                return `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+            } else { throw new Error('AI로부터 이미지 생성 결과를 받지 못했습니다.'); }
+        }
+        
+        async function saveResultToFirebase(textData, compressedImageUrl) {
+            try {
+                await addDoc(reportsCollection, {
+                    character: textData.character,
+                    slogan: textData.slogan,
+                    strengths: textData.strengths,
+                    growth_point: textData.growth_point,
+                    imageUrl: compressedImageUrl,
+                    createdAt: serverTimestamp()
+                });
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        }
+
+        async function loadGallery() {
+            galleryGrid.innerHTML = '<div class="col-span-full text-center"><div class="loader inline-block"></div></div>';
+            showPage('gallery');
+
+            try {
+                const q = query(reportsCollection, limit(50));
+                const querySnapshot = await getDocs(q);
+                
+                const reports = [];
+                querySnapshot.forEach((doc) => {
+                    reports.push(doc.data());
+                });
+
+                reports.sort((a, b) => {
+                    const timeA = a.createdAt ? a.createdAt.toMillis() : 0;
+                    const timeB = b.createdAt ? b.createdAt.toMillis() : 0;
+                    return timeB - timeA;
+                });
+
+                galleryGrid.innerHTML = '';
+                if (reports.length === 0) {
+                    galleryGrid.innerHTML = '<p class="col-span-full text-center text-gray-500">아직 등록된 결과가 없습니다. 첫 번째 결과를 만들어보세요!</p>';
+                    return;
+                }
+                reports.forEach((report) => {
+                    const card = document.createElement('div');
+                    card.className = 'cursor-pointer group';
+                    card.innerHTML = `
+                        <div class="aspect-square overflow-hidden rounded-lg bg-gray-200">
+                             <img src="${report.imageUrl}" alt="${report.character.name}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" onerror="this.onerror=null;this.src='https://placehold.co/300x300/e2e8f0/94a3b8?text=Image';">
+                        </div>
+                        <h3 class="mt-2 font-bold text-gray-800 truncate">${report.character.name}</h3>
+                    `;
+                    card.onclick = () => openModal(report);
+                    galleryGrid.appendChild(card);
+                });
+            } catch (error) {
+                console.error("Error loading gallery:", error);
+                galleryGrid.innerHTML = `<p class="col-span-full text-center text-red-500">갤러리를 불러오는 중 오류가 발생했습니다.<br><span class="text-sm text-gray-400">${error.message}</span></p>`;
+            }
+        }
+
+        function getResultHtml(data) {
+            return `
+                <div class="text-center mb-6">
+                    <p class="text-teal-600 font-bold">나의 교육 페르소나</p>
+                    <h2 class="text-3xl font-bold text-gray-800 mt-1">${data.character.name}</h2>
+                </div>
+                <div class="bg-amber-50 p-4 rounded-lg mb-6">
+                    <p class="text-gray-600 leading-relaxed">${data.character.description}</p>
+                </div>
+                <div class="mb-6">
+                    <h3 class="font-bold text-teal-600 mb-2">나의 슬로건</h3>
+                    <p class="text-lg font-semibold text-center bg-gray-100 p-4 rounded-lg">"${data.slogan}"</p>
+                </div>
+                <div class="mb-6">
+                    <h3 class="font-bold text-teal-600 mb-2">나의 강점</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        ${data.strengths.map(s => `<li>${s}</li>`).join('')}
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-bold text-teal-600 mb-2">성장 포인트</h3>
+                    <div class="bg-gray-100 p-4 rounded-lg">
+                        <p class="font-semibold text-gray-800">${data.growth_point.title}</p>
+                        <p class="text-gray-600 mt-1 leading-relaxed">${data.growth_point.description}</p>
+                    </div>
+                </div>`;
+        }
+
+        function displayResult(data, imageUrl) {
+            resultContent.innerHTML = getResultHtml(data);
+            const imgElement = document.createElement('img');
+            imgElement.src = imageUrl;
+            imgElement.alt = data.character.name;
+            imgElement.className = "w-full rounded-lg shadow-md aspect-square object-cover mb-6";
+            imgElement.onerror = function() { this.onerror=null; this.src='https://placehold.co/600x600/e2e8f0/94a3b8?text=Image+Error'; };
+            resultContent.prepend(imgElement);
+            showPage('result');
+        }
+
+        function displayError(errorMessage) {
+            resultContent.innerHTML = `<div class="text-center"><h2 class="text-2xl font-bold text-red-600 mb-4">오류 발생</h2><p class="text-gray-600 mb-4">리포트를 생성하는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.</p><p class="text-sm text-gray-500 bg-gray-100 p-2 rounded">오류 정보: ${errorMessage}</p></div>`;
+            document.getElementById('result-buttons').classList.add('hidden');
+            showPage('result');
+        }
+
+        function openModal(data) {
+            modalContentBody.innerHTML = `
+                <div class="mb-6">
+                    <img src="${data.imageUrl}" alt="${data.character.name}" class="w-full rounded-lg shadow-md aspect-square object-cover">
+                </div>
+                ${getResultHtml(data)}
+            `;
+            detailModal.classList.remove('invisible', 'pointer-events-none');
+            requestAnimationFrame(() => {
+                detailModal.classList.remove('opacity-0');
+                modalContentContainer.classList.remove('scale-95');
+            });
+        }
+
+        function closeModal() {
+            detailModal.classList.add('opacity-0');
+            modalContentContainer.classList.add('scale-95');
+            setTimeout(() => {
+                detailModal.classList.add('invisible', 'pointer-events-none');
+            }, 300);
+        }
+
+        downloadPdfBtn.addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const content = document.getElementById('result-content');
+            const originalBtnText = downloadPdfBtn.innerHTML;
+            downloadPdfBtn.innerHTML = 'PDF 생성 중...';
+            downloadPdfBtn.disabled = true;
+            html2canvas(content, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                const pdf = new jsPDF({ orientation: 'p', unit: 'px', format: [imgWidth, imgHeight] });
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                pdf.save("쌤BTI_나의브랜딩리포트.pdf");
+            }).catch(error => {
+                console.error("PDF 생성 오류:", error);
+                alert("PDF를 생성하는 데 문제가 발생했습니다.");
+            }).finally(() => {
+                downloadPdfBtn.innerHTML = originalBtnText;
+                downloadPdfBtn.disabled = false;
+            });
+        });
+
+        downloadImgBtn.addEventListener('click', () => {
+            const content = document.getElementById('result-content');
+            html2canvas(content, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = '쌤BTI_나의브랜딩리포트.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        });
+        
+        function resetApp() {
+            currentQuestionIndex = 0;
+            userAnswers = {};
+            progressBar.style.width = '0%';
+            document.getElementById('result-buttons').classList.remove('hidden');
+            showPage('start');
+        }
+
+        restartBtn.addEventListener('click', resetApp);
+        backToStartBtn.addEventListener('click', resetApp);
+        startBtn.addEventListener('click', () => { showPage('question'); displayQuestion(); });
+        galleryBtn.addEventListener('click', loadGallery);
+        goToGalleryBtn.addEventListener('click', loadGallery);
+        
+        closeModalBtn.addEventListener('click', closeModal);
+        detailModal.addEventListener('click', (event) => {
+            if (event.target === detailModal) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>드래곤볼 전투력 측정기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            background: linear-gradient(135deg, #ff7e5f, #feb47b, #0072ff, #00c6ff);
+            background-size: 400% 400%;
+            animation: gradientAnimation 15s ease infinite;
+            color: #333;
+            overflow-x: hidden; 
+            overflow-y: auto;   
+            cursor: none; 
+        }
+
+        @keyframes gradientAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            margin: 2rem auto; 
+            padding: 2rem; 
+            background-color: rgba(255, 255, 255, 0.95); 
+            border-radius: 1rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3); 
+            position: relative; 
+            z-index: 10;
+        }
+        .section-card { 
+            background-color: #fff;
+            border: 1px solid #e0e0e0; 
+            border-radius: 0.75rem;
+            padding: 1.5rem; 
+            margin-bottom: 1.5rem;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.12); 
+            opacity: 0;
+            transform: translateY(25px) scale(0.95); 
+            animation: fadeInSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; 
+        }
+
+        @keyframes fadeInSlideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .btn {
+            transition: all 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            font-weight: 600; 
+        }
+        .btn:hover {
+            transform: translateY(-4px) scale(1.05); 
+            box-shadow: 0 8px 15px rgba(0,0,0,0.25);
+        }
+        .btn:active {
+            transform: translateY(-1px) scale(1.02); 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .btn-primary {
+            background-color: #ff6f00; 
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #e65100;
+        }
+        .btn-secondary { 
+            background-color: #ffc107;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background-color: #ffa000;
+        }
+        .btn-secondary.selected {
+            background-color: #ff8f00 !important;
+            color: white !important;
+            box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.6) !important; 
+            transform: scale(1.05);
+        }
+
+        .survey-option-btn { 
+             background-color: #f8f9fa;
+             border: 2px solid #e0e0e0;
+        }
+        .survey-option-btn:hover {
+            background-color: #fff3e0; 
+            border-color: #ffc107;
+        }
+        .survey-option-btn.selected {
+            background-color: #ff9800 !important; 
+            color: white !important;
+            border: 2px solid #e65100 !important;
+            transform: scale(1.03); 
+        }
+        .result-card {
+            background-color: rgba(0, 114, 255, 0.9); 
+            color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem; 
+            margin-top: 2rem;
+            border: 3px solid #00c6ff; 
+            box-shadow: 0 8px 20px rgba(0, 114, 255, 0.4); 
+        }
+        .result-image {
+            border: 6px solid #ffc107; 
+            border-radius: 0.75rem; 
+            max-width: 100%;
+            min-height: 200px; 
+            height: auto;
+            margin: 1.5rem auto; 
+            display: block;
+            background-color: #e9ecef; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .loading-spinner {
+            border: 6px solid rgba(255, 111, 0, 0.2); 
+            border-radius: 50%;
+            border-top: 6px solid #ff6f00; 
+            width: 60px; 
+            height: 60px;
+            animation: spin 0.8s linear infinite; 
+            margin: 25px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #background-balls-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            z-index: 0; 
+        }
+        .background-ball {
+            position: absolute;
+            background-color: rgba(255, 165, 0, 0.6); 
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255, 165, 0, 0.5), 0 0 25px rgba(255, 165, 0, 0.3);
+            animation: float 20s infinite ease-in-out; 
+        }
+        @keyframes float { 
+            0% { transform: translateY(0px) translateX(0px) scale(1); }
+            25% { transform: translateY(-20px) translateX(15px) scale(1.05); }
+            50% { transform: translateY(10px) translateX(-10px) scale(0.95); }
+            75% { transform: translateY(-15px) translateX(-20px) scale(1.02); }
+            100% { transform: translateY(0px) translateX(0px) scale(1); }
+        }
+
+        #custom-cursor {
+            position: fixed;
+            width: 25px;
+            height: 25px;
+            background-color: rgba(255, 223, 0, 0.8); 
+            border-radius: 50%;
+            pointer-events: none; 
+            z-index: 9999; 
+            transform: translate(-50%, -50%); 
+            transition: transform 0.1s ease-out, width 0.2s ease, height 0.2s ease; 
+            box-shadow: 0 0 10px rgba(255, 223, 0, 0.7), 0 0 20px rgba(255, 223, 0, 0.5);
+            display: none; 
+        }
+        #custom-cursor::before { 
+            content: '';
+            width: 8px;
+            height: 8px;
+            background-color: white;
+            border-radius: 50%;
+            animation: pulseCursor 1s infinite ease-in-out;
+        }
+        @keyframes pulseCursor {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(0.7); opacity: 0.4; }
+        }
+        
+        @media (min-width: 1024px) { 
+            #custom-cursor {
+                display: flex;
+            }
+        }
+        @media (max-width: 1023px) {
+             body {
+                cursor: auto;
+            }
+        }
+
+        .btn:hover ~ #custom-cursor { 
+            width: 35px;
+            height: 35px;
+            background-color: rgba(255, 165, 0, 0.9);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-2 sm:p-4">
+    <div id="background-balls-container"></div>
+    <div id="custom-cursor"></div>
+
+    <div class="container w-full max-w-xl mx-auto my-4 sm:my-8 px-4 py-6 sm:px-6 sm:py-8 md:px-8 md:py-10">
+        <header class="text-center mb-6 sm:mb-8 md:mb-10"> 
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-orange-500" style="text-shadow: 2px 2px 0px #fff, 4px 4px 0px rgba(0,0,0,0.1);">드래곤볼 전투력 측정기</h1> 
+            <p class="text-lg sm:text-xl text-gray-700 mt-2 sm:mt-3">초사이어인급 재미 보장! 너의 전투력은 얼마냐?!</p> 
+        </header>
+
+        <div id="nameSection" class="section-card p-4 sm:p-6">
+            <label for="userName" class="block text-lg sm:text-xl font-semibold text-gray-800 mb-2 sm:mb-3">전사여, 그대의 이름은?</label>
+            <input type="text" id="userName" class="w-full p-2.5 sm:p-3 border-2 border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 text-base sm:text-lg focus:shadow-lg" placeholder="예: 손오공"> 
+            <button id="submitNameBtn" class="btn btn-primary w-full mt-4 sm:mt-5 py-2.5 sm:py-3 rounded-lg text-base sm:text-lg">이름 등록 완료!</button> 
+        </div>
+
+        <div id="genderSection" class="section-card hidden p-4 sm:p-6">
+            <p class="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">그대의 성별은 무엇인가?</p>
+            <div class="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4"> 
+                <button data-gender="male" class="gender-btn btn btn-secondary py-2.5 sm:py-3 rounded-lg text-sm sm:text-base md:text-lg">남자</button>
+                <button data-gender="female" class="gender-btn btn btn-secondary py-2.5 sm:py-3 rounded-lg text-sm sm:text-base md:text-lg">여자</button>
+                <button data-gender="secret" class="gender-btn btn btn-secondary py-2.5 sm:py-3 rounded-lg text-sm sm:text-base md:text-lg">비밀</button>
+            </div>
+        </div>
+
+        <div id="surveySection" class="hidden">
+            
+        </div>
+        
+        <div id="loadingSection" class="hidden text-center py-8 sm:py-10"> 
+            <p class="text-xl sm:text-2xl font-semibold text-orange-600 mb-2 sm:mb-3">스카우터 분석 중...</p> 
+            <div class="loading-spinner w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 mx-auto"></div> 
+            <p class="text-base sm:text-lg text-gray-700 mt-2 sm:mt-3">당신의 잠재된 파워를 측정하고 있습니다! <br> (두근두근... 우주의 기운이 느껴진다!)</p> 
+        </div>
+
+        <div id="resultSection" class="hidden text-center">
+            <h2 id="resultName" class="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-5 text-orange-600" style="text-shadow: 1px 1px 0px #fff;"></h2> 
+            <img id="characterImage" src="https://placehold.co/300x300/e9ecef/FFFFFF?text=이미지+준비중&font=jua" alt="캐릭터 이미지" class="result-image md:min-h-[280px]">
+            <div class="result-card p-4 sm:p-6">
+                <p class="text-xl sm:text-2xl mb-2 sm:mb-3"><strong>전투력:</strong> <span id="powerLevel" class="font-bold text-yellow-300 text-2xl sm:text-3xl" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);"></span></p> 
+                <p class="text-xl sm:text-2xl mb-2 sm:mb-3"><strong>필살기:</strong> <span id="specialMoveName" class="font-bold text-yellow-300 text-2xl sm:text-3xl" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.5);"></span></p> 
+                <p class="text-base sm:text-lg mt-3 sm:mt-4 leading-relaxed"><strong>필살기 설명:</strong> <span id="specialMoveDescription"></span></p> 
+            </div>
+            <button id="retryBtn" class="btn btn-primary w-full mt-6 sm:mt-8 py-3 sm:py-3.5 rounded-lg text-lg sm:text-xl">다시 측정하기!</button> 
+        </div>
+
+        <div id="errorMessage" class="hidden mt-4 sm:mt-5 p-3 sm:p-4 bg-red-100 border-2 border-red-500 text-red-700 rounded-lg text-center text-base sm:text-lg shadow-md"> 
+            
+        </div>
+    </div>
+
+    <script>
+        const nameSection = document.getElementById('nameSection');
+        const genderSection = document.getElementById('genderSection');
+        const surveySection = document.getElementById('surveySection');
+        const loadingSection = document.getElementById('loadingSection');
+        const resultSection = document.getElementById('resultSection');
+        
+        const submitNameBtn = document.getElementById('submitNameBtn');
+        const userNameInput = document.getElementById('userName');
+        
+        const resultName = document.getElementById('resultName');
+        const characterImage = document.getElementById('characterImage');
+        const powerLevel = document.getElementById('powerLevel');
+        const specialMoveName = document.getElementById('specialMoveName');
+        const specialMoveDescription = document.getElementById('specialMoveDescription');
+        const retryBtn = document.getElementById('retryBtn');
+        const errorMessageDiv = document.getElementById('errorMessage');
+
+        const backgroundBallsContainer = document.getElementById('background-balls-container');
+        const customCursor = document.getElementById('custom-cursor');
+
+        const numBalls = 15; 
+        for (let i = 0; i < numBalls; i++) {
+            const ball = document.createElement('div');
+            ball.classList.add('background-ball');
+            const size = Math.random() * 40 + 15; 
+            ball.style.width = `${size}px`;
+            ball.style.height = `${size}px`;
+            ball.style.left = `${Math.random() * 100}vw`;
+            ball.style.top = `${Math.random() * 100}vh`;
+            ball.style.animationDelay = `${Math.random() * 5}s`; 
+            ball.style.animationDuration = `${Math.random() * 7 + 8}s`; 
+            backgroundBallsContainer.appendChild(ball);
+        }
+
+        if (window.matchMedia("(min-width: 1024px)").matches) {
+            document.addEventListener('mousemove', (e) => {
+                customCursor.style.left = `${e.clientX}px`;
+                customCursor.style.top = `${e.clientY}px`;
+            });
+            document.addEventListener('mousedown', () => customCursor.style.transform = 'translate(-50%, -50%) scale(0.8)');
+            document.addEventListener('mouseup', () => customCursor.style.transform = 'translate(-50%, -50%) scale(1)');
+        }
+
+
+        const allQuestions = [
+            { id: 'q1', text: "강력한 적이 나타났을 때, 당신의 첫 번째 반응은?", options: [{ text: "정면으로 맞서 싸운다!", value: "brave_direct_fight" }, { text: "전략을 세우고 약점을 노린다.", value: "strategic_weakness" }, { text: "동료들과 함께 협력한다.", value: "team_cooperation" }, { text: "일단 숨어서 상황을 지켜본다.", value: "cautious_observe" }] },
+            { id: 'q2', text: "가장 중요하다고 생각하는 가치는 무엇인가요?", options: [{ text: "정의와 평화", value: "justice_peace_value" }, { text: "끝없는 강함 추구", value: "strength_pursuit_value" }, { text: "소중한 사람들을 지키는 것", value: "protection_loved_ones_value" }, { text: "자유와 모험", value: "freedom_adventure_value" }] },
+            { id: 'q3', text: "훈련할 때 어떤 스타일을 선호하나요?", options: [{ text: "혹독한 실전 위주의 훈련", value: "hardcore_combat_training" }, { text: "정신 수양과 명상", value: "mental_meditation_training" }, { text: "새로운 기술을 배우고 연마하는 것", value: "skill_learning_training" }, { text: "즐겁게, 놀이처럼 하는 훈련", value: "fun_playful_training" }] },
+            { id: 'q4', text: "위기 상황에서 당신의 가장 큰 무기는 무엇이라고 생각하나요?", options: [{ text: "압도적인 파워", value: "overwhelming_power_weapon" }, { text: "뛰어난 두뇌와 판단력", value: "intellect_judgment_weapon" }, { text: "불굴의 의지와 용기", value: "willpower_courage_weapon" }, { text: "예측 불가능한 움직임", value: "unpredictable_moves_weapon" }] },
+            { id: 'q5', text: "만약 드래곤볼을 모은다면 어떤 소원을 빌 건가요?", options: [{ text: "세상의 평화를 가져다 달라!", value: "world_peace_wish" }, { text: "우주 최강의 전사가 되게 해달라!", value: "strongest_warrior_wish" }, { text: "죽은 사람을 되살려 달라.", value: "revive_someone_wish" }, { text: "맛있는 음식을 잔뜩 먹고 싶다!", value: "delicious_food_wish" }] },
+            { id: 'q6', text: "가장 좋아하는 전투 스타일은 무엇인가요?", options: [{ text: "파워풀한 근접전", value: "close_combat_power_style" }, { text: "화려한 에너지파 기술", value: "energy_beam_flashy_style" }, { text: "스피드를 활용한 교란 작전", value: "speed_disruption_style" }, { text: "상대의 허를 찌르는 변칙 공격", value: "trick_attack_style" }] },
+            { id: 'q7', text: "당신이 생각하는 진정한 '강함'이란?", options: [{ text: "누구에게도 지지 않는 힘", value: "unbeatable_force_strength" }, { text: "소중한 것을 지킬 수 있는 능력", value: "ability_to_protect_strength" }, { text: "끊임없이 자신의 한계를 넘어서는 것", value: "overcoming_limits_strength" }, { text: "마음의 평온과 지혜", value: "inner_peace_wisdom_strength" }] },
+            { id: 'q8', text: "가장 좋아하는 드래곤볼 캐릭터는 누구인가요?", options: [{ text: "손오공 (긍정 에너지!)", value: "fav_goku" }, { text: "베지터 (프라이드!)", value: "fav_vegeta" }, { text: "피콜로 (냉철한 스승!)", value: "fav_piccolo" }, { text: "크리링 (인간미!)", value: "fav_krillin" }] },
+            { id: 'q9', text: "만약 당신이 드래곤볼 세계관에 떨어진다면, 가장 먼저 하고 싶은 일은?", options: [{ text: "Z전사들과 수련하기", value: "action_train_z" }, { text: "드래곤볼 모으기", value: "action_collect_db" }, { text: "부르마에게 발명품 부탁하기", value: "action_bulma_invention" }, { text: "신나게 먹방 찍기 (야무치처럼...?)", value: "action_food_tour" }] },
+            { id: 'q10', text: "당신의 성격과 가장 가까운 것은?", options: [{ text: "불타는 정의감의 열혈파", value: "personality_justice_hotblood" }, { text: "냉철하고 계산적인 전략가", value: "personality_strategist_cool" }, { text: "유쾌하고 긍정적인 분위기 메이커", value: "personality_cheerful_positive" }, { text: "조용하지만 내면이 강한 관찰자", value: "personality_observer_strong_inner" }] },
+            { id: 'q11', text: "어떤 종류의 필살기를 갖고 싶나요?", options: [{ text: "모든 걸 파괴하는 강력한 한 방!", value: "move_powerful_single" }, { text: "눈을 사로잡는 화려한 연속기!", value: "move_flashy_combo" }, { text: "아무도 예상 못 할 변칙적인 기술!", value: "move_deceptive_trick" }, { text: "모두를 안전하게 지키는 방어/보조 기술!", value: "move_defensive_support" }] },
+            { id: 'q12', text: "전투 중 가장 화나는 순간은?", options: [{ text: "동료가 다쳤을 때", value: "anger_ally_hurt" }, { text: "상대가 비겁한 수를 쓸 때", value: "anger_unfair_opponent" }, { text: "내 힘이 부족하다고 느낄 때", value: "anger_own_weakness" }, { text: "밥 먹을 시간을 빼앗길 때(...!)", value: "anger_meal_interrupted" }] }
+        ];
+
+        let userAnswers = {};
+        let selectedQuestions = [];
+        let currentQuestionIndex = 0;
+        const apiKey = ""; 
+
+
+        function displayError(message) {
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.classList.remove('hidden');
+            errorMessageDiv.style.opacity = '0';
+            errorMessageDiv.style.transform = 'translateY(-20px)';
+            setTimeout(() => {
+                errorMessageDiv.style.opacity = '1';
+                errorMessageDiv.style.transform = 'translateY(0)';
+            }, 50);
+            setTimeout(() => { 
+                errorMessageDiv.style.opacity = '0';
+                errorMessageDiv.style.transform = 'translateY(20px)';
+                setTimeout(() => errorMessageDiv.classList.add('hidden'), 300);
+            }, 5000);
+        }
+
+        function getRandomQuestions(count) {
+            const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+            return shuffled.slice(0, count);
+        }
+
+        function showNextSection(currentSection, nextSection) {
+            currentSection.style.animation = 'fadeOutSlideUp 0.4s forwards';
+            setTimeout(() => {
+                currentSection.classList.add('hidden');
+                currentSection.style.animation = '';
+
+                nextSection.classList.remove('hidden');
+                void nextSection.offsetWidth; 
+                nextSection.style.animation = 'fadeInSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+            }, 400);
+        }
+        
+        const styleSheet = document.createElement("style");
+        styleSheet.type = "text/css";
+        styleSheet.innerText = `
+            @keyframes fadeOutSlideUp {
+                from { opacity: 1; transform: translateY(0) scale(1); }
+                to { opacity: 0; transform: translateY(-25px) scale(0.95); }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+
+        submitNameBtn.addEventListener('click', () => {
+            const name = userNameInput.value.trim();
+            if (!name) {
+                displayError("이름을 입력해야 다음으로 넘어갈 수 있소!");
+                return;
+            }
+            userAnswers = { name };
+            showNextSection(nameSection, genderSection);
+        });
+
+        document.querySelectorAll('.gender-btn').forEach(button => {
+            button.addEventListener('click', (event) => {
+                userAnswers.gender = event.target.dataset.gender;
+                document.querySelectorAll('.gender-btn').forEach(btn => btn.classList.remove('selected'));
+                event.target.classList.add('selected');
+
+                setTimeout(() => { 
+                    selectedQuestions = getRandomQuestions(3); 
+                    currentQuestionIndex = 0;
+                    showNextSection(genderSection, surveySection);
+                    renderCurrentQuestion();
+                }, 400); 
+            });
+        });
+
+        function renderCurrentQuestion() {
+            surveySection.innerHTML = ''; 
+            if (currentQuestionIndex < selectedQuestions.length) {
+                const q = selectedQuestions[currentQuestionIndex];
+                const questionDiv = document.createElement('div');
+                questionDiv.classList.add('section-card', 'p-4', 'sm:p-6'); 
+                questionDiv.innerHTML = `
+                    <p class="text-base sm:text-lg font-semibold mb-1 text-gray-600">질문 ${currentQuestionIndex + 1}/${selectedQuestions.length}</p>
+                    <p class="text-lg sm:text-xl mb-3 sm:mb-4 font-medium">${q.text}</p>
+                    <div class="space-y-2 sm:space-y-3">
+                        ${q.options.map(opt => `
+                            <button data-question-id="${q.id}" data-value="${opt.value}" class="w-full text-left p-3 sm:p-3.5 border rounded-lg shadow-sm survey-option-btn btn text-sm sm:text-base">
+                                ${opt.text}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+                surveySection.appendChild(questionDiv);
+                void questionDiv.offsetWidth; 
+                questionDiv.style.animation = 'fadeInSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+
+                document.querySelectorAll('.survey-option-btn').forEach(button => {
+                    button.addEventListener('click', handleOptionSelect);
+                });
+            } else {
+                showNextSection(surveySection, loadingSection);
+                generateAndShowResults();
+            }
+        }
+
+        function handleOptionSelect(event) {
+            const selectedButton = event.currentTarget;
+            const questionId = selectedButton.dataset.questionId;
+            const value = selectedButton.dataset.value;
+            userAnswers[questionId] = value;
+
+            const parentQuestionCard = selectedButton.closest('.section-card');
+            parentQuestionCard.querySelectorAll('.survey-option-btn').forEach(btn => {
+                btn.disabled = true; 
+                btn.classList.remove('selected', 'bg-yellow-100');
+                btn.classList.add('bg-gray-200', 'text-gray-500', 'opacity-70'); 
+            });
+            selectedButton.classList.add('selected');
+            selectedButton.classList.remove('bg-gray-200', 'text-gray-500', 'opacity-70');
+            selectedButton.classList.add('bg-orange-500', 'text-white', 'shadow-lg'); 
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (parentQuestionCard) {
+                     parentQuestionCard.style.animation = 'fadeOutSlideUp 0.4s forwards';
+                     setTimeout(() => {
+                        parentQuestionCard.remove(); 
+                        renderCurrentQuestion();
+                     }, 400);
+                } else {
+                    renderCurrentQuestion();
+                }
+            }, 400); 
+        }
+
+        async function generateAndShowResults() {
+            resultSection.classList.add('hidden'); 
+            characterImage.src = "https://placehold.co/300x300/e9ecef/FFFFFF?text=스카우터+분석중...&font=jua";
+            characterImage.alt = "캐릭터 이미지 생성 중...";
+            resultName.textContent = `${userAnswers.name}님의 측정 결과`;
+
+            let characterFeatures = [];
+            let personalityHints = []; 
+
+            selectedQuestions.forEach(q => {
+                const answer = userAnswers[q.id];
+                if (answer) {
+                    personalityHints.push(answer); 
+                    if (answer.includes('brave') || answer.includes('hotblood')) characterFeatures.push("fearless warrior stance, determined expression");
+                    if (answer.includes('strategic') || answer.includes('cool')) characterFeatures.push("intelligent and tactical look, sharp eyes");
+                    if (answer.includes('team') || answer.includes('cooperation')) characterFeatures.push("friendly and cooperative aura, smiling");
+                    if (answer.includes('cautious') || answer.includes('observer')) characterFeatures.push("calm and observant expression, thoughtful pose");
+                    if (answer.includes('justice')) characterFeatures.push("heroic pose, righteous aura");
+                    if (answer.includes('strength') || answer.includes('power')) characterFeatures.push("powerful energy aura, muscular build (if appropriate)");
+                    if (answer.includes('protection')) characterFeatures.push("protective stance, guarding gesture");
+                    if (answer.includes('adventure') || answer.includes('freedom')) characterFeatures.push("adventurous gear, dynamic movement");
+                    if (answer.includes('hardcore')) characterFeatures.push("battle-worn appearance, scars, intense gaze");
+                    if (answer.includes('mental') || answer.includes('meditation')) characterFeatures.push("serene and focused eyes, meditative pose");
+                    if (answer.includes('skill')) characterFeatures.push("masterful technique pose, holding a ki blast or weapon");
+                    if (answer.includes('fun') || answer.includes('playful') || answer.includes('cheerful')) characterFeatures.push("playful and energetic expression, bright colors");
+                    if (answer.includes('food') || answer.includes('meal')) characterFeatures.push("slightly chubby or always hungry look, perhaps holding food, comical expression");
+                    if (answer.includes('goku')) characterFeatures.push("inspired by Goku, spiky black hair, orange gi elements");
+                    if (answer.includes('vegeta')) characterFeatures.push("inspired by Vegeta, proud stance, saiyan armor elements");
+                    if (answer.includes('piccolo')) characterFeatures.push("inspired by Piccolo, green skin, Namekian attire, pointed ears");
+                }
+            });
+            
+            let genderPromptText = ""; 
+            if (userAnswers.gender === 'male') genderPromptText = "male character, masculine features,";
+            if (userAnswers.gender === 'female') genderPromptText = "female character, feminine features,";
+            
+            const baseImagePrompt = `A unique, highly detailed Dragon Ball Z inspired character, ${genderPromptText} digital anime art, vibrant and dynamic colors, dramatic action pose, cinematic lighting, epic fantasy or space background,`;
+            const imagePrompt = baseImagePrompt + characterFeatures.join(", ") + (characterFeatures.length > 0 ? ", " : "") + `embodying a personality that is ${personalityHints.join(" and ")}, with an overall cool and fun vibe.`;
+            console.log("Image Prompt:", imagePrompt);
+
+            let imageGenerated = false;
+            try {
+                const imageApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+                const imageResponse = await fetch(imageApiUrl, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ instances: [{ prompt: imagePrompt }], parameters: { "sampleCount": 1 } })
+                });
+                if (!imageResponse.ok) {
+                    let errorDetail = `Status: ${imageResponse.status}, StatusText: ${imageResponse.statusText}`;
+                    try {
+                        const errorData = await imageResponse.json(); 
+                        errorDetail = (errorData.error && typeof errorData.error === 'object' ? JSON.stringify(errorData.error) : errorData.error?.message) || JSON.stringify(errorData);
+                    } catch (jsonError) {
+                        try {
+                            const textError = await imageResponse.text(); 
+                            errorDetail += `, ResponseBody: ${textError || "(empty)"}`;
+                        } catch (textReadError) {
+                            errorDetail += `, Failed to read response body: ${textReadError.message}`;
+                        }
+                    }
+                    throw new Error(`이미지 생성 API 오류: ${errorDetail}`);
+                }
+                const imageData = await imageResponse.json();
+                if (imageData.predictions && imageData.predictions.length > 0 && imageData.predictions[0].bytesBase64Encoded) {
+                    characterImage.src = `data:image/png;base64,${imageData.predictions[0].bytesBase64Encoded}`;
+                    imageGenerated = true;
+                } else {
+                    throw new Error("API 응답에서 이미지 데이터를 찾을 수 없습니다.");
+                }
+            } catch (error) {
+                console.error('Error generating image:', error);
+                characterImage.src = "https://placehold.co/300x300/FF0000/FFFFFF?text=이미지+생성+실패&font=jua";
+                displayError(`캐릭터 이미지 생성 중 오류: ${error.message}.`);
+            }
+
+            let textGenPromptParts = [`사용자 이름: ${userAnswers.name}.`];
+            if (userAnswers.gender !== 'secret') {
+                textGenPromptParts.push(`성별: ${userAnswers.gender === 'male' ? '남자' : '여자'}.`);
+            } else {
+                textGenPromptParts.push(`성별: 비밀.`);
+            }
+
+            selectedQuestions.forEach(q => {
+                const questionText = q.text;
+                const answerValue = userAnswers[q.id];
+                const answerText = q.options.find(opt => opt.value === answerValue)?.text || answerValue;
+                textGenPromptParts.push(`질문 "${questionText}"에 대한 답변 ("${answerValue}"): "${answerText}".`);
+            });
+            
+            const textGenPrompt = `
+                다음은 사용자의 설문 답변입니다:
+                ${textGenPromptParts.join("\n")}
+
+                이 답변들을 바탕으로 사용자를 위한 매우 독창적이고 "재미있는" 드래곤볼 스타일의 캐릭터 설명을 생성해주세요.
+                전투력은 기본적으로 "수련을 시작한 전사 (전투력: 1000)" 수준에서 시작한다고 가정하고, 사용자의 이름, (선택했다면) 성별, 그리고 설문 답변의 느낌 (예: 용감함, 식탐, 평화주의, 강함 추구 등)에 따라 전투력을 매우 극적으로, 때로는 코믹하게 설정해주세요. 
+                예를 들어, 매우 용감하고 강함을 추구하는 답변을 했다면 전투력이 '피콜로 대마왕(260) 격파 가능!', '라데츠(1500)와 호각!', '내퍼(4000) 정도는 가볍게!', '기뉴 특전대(120000)급 강함!', '프리저 1단계(530000)와 대등!', '초사이어인(150,000,000)에 근접!' 또는 '측정 불가! 우주 최강일지도?!' 와 같이 매우 높아질 수 있습니다. 
+                반대로, 평화적이거나, 먹는 것을 좋아하거나, 약해 보이는 답변을 했다면 '총 든 농부 (전투력: 5)보다 약함', '야무치 재배맨전 (전투력: 1480)에서 패배할 수준', '미스터 포포(1030)에게 한 수 배울 정도' 또는 '전투력 1000, 하지만 배고프면 0' 처럼 낮거나 웃기게 표현될 수 있습니다.
+                제시된 드래곤볼 캐릭터들의 전투력 수치를 참고하여 창의적으로 전투력을 부여하되, 항상 사용자의 입력에 기반하여 개성있는 결과가 나오도록 해주세요.
+                필살기 이름과 설명도 답변의 특징을 반영하여 매우 창의적이고, 때로는 웃음을 유발하거나, 혹은 매우 멋있게 작성해주세요. (예: 필살기 이름: '정의의 주먹밥 날리기', '궁극의 평화주의 선언', '은하계 미식 탐험 빔').
+                결과는 반드시 다음 JSON 형식이어야 합니다:
+                {
+                  "powerLevel": "전투력 값 또는 설명 (예: '수련 중인 전사 (전투력: 1200)', '프리저 최종형태(120,000,000)급 잠재력!')",
+                  "specialMoveName": "독창적이고 재미있는 필살기 이름 (예: '배고픔 참기 Lv.MAX')",
+                  "specialMoveDescription": "필살기에 대한 간략하고 멋진 또는 코믹한 설명 (예: 어떤 음식의 유혹도 이겨내는 강인한 정신력의 발현!)"
+                }
+            `;
+            
+            try {
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: textGenPrompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: { type: "OBJECT", properties: { "powerLevel": { "type": "STRING" }, "specialMoveName": { "type": "STRING" }, "specialMoveDescription": { "type": "STRING" } }, required: ["powerLevel", "specialMoveName", "specialMoveDescription"] }
+                    }
+                };
+                const textApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const textResponse = await fetch(textApiUrl, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!textResponse.ok) {
+                    let errorDetail = `Status: ${textResponse.status}, StatusText: ${textResponse.statusText}`;
+                    try {
+                        const errorData = await textResponse.json(); 
+                        errorDetail = (errorData.error && typeof errorData.error === 'object' ? JSON.stringify(errorData.error) : errorData.error?.message) || JSON.stringify(errorData);
+                    } catch (jsonError) {
+                        try {
+                            const textError = await textResponse.text(); 
+                            errorDetail += `, ResponseBody: ${textError || "(empty)"}`;
+                        } catch (textReadError) {
+                            errorDetail += `, Failed to read response body: ${textReadError.message}`;
+                        }
+                    }
+                    throw new Error(`텍스트 생성 API 오류: ${errorDetail}`);
+                }
+                const textData = await textResponse.json();
+                if (textData.candidates && textData.candidates[0]?.content?.parts[0]?.text) {
+                    const resultJson = JSON.parse(textData.candidates[0].content.parts[0].text);
+                    powerLevel.textContent = resultJson.powerLevel;
+                    specialMoveName.textContent = resultJson.specialMoveName;
+                    specialMoveDescription.textContent = resultJson.specialMoveDescription;
+                } else {
+                    throw new Error("API 응답에서 텍스트 데이터를 찾을 수 없습니다.");
+                }
+            } catch (error) {
+                console.error('Error generating text data:', error);
+                powerLevel.textContent = "스카우터 고장!";
+                specialMoveName.textContent = "측정 실패!";
+                specialMoveDescription.textContent = "오류로 인해 필살기 정보를 가져올 수 없었습니다. 하지만 당신은 분명 강할 겁니다!";
+                displayError(`전투력 및 필살기 정보 생성 중 오류: ${error.message}.`);
+            } finally {
+                showNextSection(loadingSection, resultSection);
+            }
+        }
+
+        retryBtn.addEventListener('click', () => {
+            showNextSection(resultSection, nameSection);
+
+            userNameInput.value = '';
+            userAnswers = {};
+            selectedQuestions = [];
+            currentQuestionIndex = 0;
+            characterImage.src = "https://placehold.co/300x300/e0e0e0/FFFFFF?text=캐릭터+이미지&font=jua";
+            characterImage.alt = "캐릭터 이미지";
+            powerLevel.textContent = "";
+            specialMoveName.textContent = "";
+            specialMoveDescription.textContent = "";
+            errorMessageDiv.classList.add('hidden'); 
+            errorMessageDiv.style.opacity = '0'; 
+            document.querySelectorAll('.gender-btn').forEach(btn => btn.classList.remove('selected'));
+        });
+        
+        window.addEventListener('load', () => {
+            nameSection.style.animation = 'fadeInSlideUp 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards';
+        });
+
+    </script>
+</body>
+</html>
