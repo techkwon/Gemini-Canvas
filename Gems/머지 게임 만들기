@@ -1,0 +1,733 @@
+사용자가 요청한 주제를 가지고 아래 코드를 수정해서 머지 게임을 캔버스에 완성합니다.
+
+
+
+---
+
+
+
+<!DOCTYPE html>
+
+<html lang="ko">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+    <title>달려라! 교통수단</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+
+    <style>
+
+        body { font-family: 'Jua', sans-serif; overflow: hidden; background-color: #e0f2fe; display: flex; align-items: center; justify-content: center; height: 100vh; }
+
+        canvas { display: block; }
+
+        .popup-enter { animation: fadeIn 0.3s ease-out; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+        .blinking { animation: blink 1.5s infinite; }
+
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+    </style>
+
+</head>
+
+<body class="p-2 sm:p-4">
+
+    
+
+    <div class="w-full max-w-sm mx-auto h-full max-h-[95vh] sm:max-h-[800px] flex flex-col">
+
+        <div class="w-full bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-grow min-h-0">
+
+            <header class="p-3 sm:p-4 bg-sky-500 text-white text-center rounded-t-3xl flex-shrink-0">
+
+                <h1 class="text-2xl sm:text-3xl font-bold">달려라! 교통수단</h1>
+
+                <div class="flex justify-between items-center mt-1 sm:mt-2 text-sm sm:text-lg">
+
+                    <div>최고점수: <span id="high-score">0</span></div>
+
+                    <div>현재점수: <span id="current-score">0</span></div>
+
+                </div>
+
+            </header>
+
+            <div class="bg-sky-200 p-2 flex items-center justify-center space-x-4 flex-shrink-0">
+
+                <span class="text-slate-700">다음 교통수단:</span>
+
+                <div id="next-vehicle-display" class="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center bg-white rounded-full shadow-inner">
+
+                    <span id="next-vehicle-emoji" class="text-2xl sm:text-3xl"></span>
+
+                </div>
+
+            </div>
+
+            <div id="game-container" class="relative flex-grow min-h-0">
+
+                <div id="game-over-modal" class="hidden absolute inset-0 bg-black bg-opacity-60 flex-col items-center justify-center text-center p-8 z-50 popup-enter">
+
+                    <!-- 게임 오버 내용은 동적으로 채워짐 -->
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    
+
+    <!-- 팝업들 -->
+
+    <div id="discovery-popup" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-[100] popup-enter">
+
+        <div class="bg-gradient-to-br from-yellow-200 to-amber-300 rounded-3xl p-6 text-center shadow-2xl max-w-sm w-full border-4 border-white">
+
+            <h2 class="text-3xl font-bold text-amber-700 mb-2">✨ 교통수단 해금! ✨</h2>
+
+            <div id="popup-emoji" class="text-8xl my-4 animate-bounce"></div>
+
+            <h3 id="popup-name" class="text-4xl font-bold text-slate-800"></h3>
+
+            <p id="popup-description" class="text-slate-600 mt-2 mb-6 text-lg"></p>
+
+            <button id="popup-close-button" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg">계속하기</button>
+
+        </div>
+
+    </div>
+
+    <div id="game-complete-popup" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-[100] popup-enter">
+
+        <div class="bg-gradient-to-br from-blue-300 to-indigo-400 rounded-3xl p-6 text-center shadow-2xl max-w-sm w-full border-4 border-white">
+
+            <h2 class="text-4xl font-bold text-white mb-2">🎉 도감 완성! 🎉</h2>
+
+            <div class="text-8xl my-4 animate-bounce">🛸</div>
+
+            <h3 class="text-3xl font-bold text-white">모든 교통수단을 완성했어요!</h3>
+
+            <p class="text-white mt-2 mb-6 text-lg">당신은 최고의 교통수단 마스터입니다!</p>
+
+            <button id="complete-popup-close-button" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg">계속 도전하기</button>
+
+        </div>
+
+    </div>
+
+
+
+    <script type="module">
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+
+
+        const { Engine, Render, Runner, World, Bodies, Common, Events, Body, Composite } = Matter;
+
+
+
+        // Firebase 설정
+
+        let db, auth;
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        
+
+        async function setupFirebase() {
+
+            try {
+
+                const firebaseConfig = JSON.parse(__firebase_config);
+
+                const app = initializeApp(firebaseConfig);
+
+                db = getFirestore(app);
+
+                auth = getAuth(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+
+                    await signInWithCustomToken(auth, __initial_auth_token);
+
+                } else {
+
+                    await signInAnonymously(auth);
+
+                }
+
+                console.log("Firebase initialized and user signed in.");
+
+                init(); // Firebase 설정 후 게임 시작
+
+            } catch (error) {
+
+                console.error("Firebase 초기화 오류:", error);
+
+                // Firebase 없이도 게임이 실행되도록 init() 호출
+
+                init();
+
+            }
+
+        }
+
+
+
+
+
+        // --- 나머지 게임 코드 ---
+
+        const gameContainer = document.getElementById('game-container');
+
+        let containerWidth, containerHeight;
+
+        
+
+        const highScoreEl = document.getElementById('high-score');
+
+        const currentScoreEl = document.getElementById('current-score');
+
+        const nextVehicleEmojiEl = document.getElementById('next-vehicle-emoji');
+
+        
+
+        const gameOverModal = document.getElementById('game-over-modal');
+
+        const discoveryPopup = document.getElementById('discovery-popup');
+
+        const popupEmoji = document.getElementById('popup-emoji');
+
+        const popupName = document.getElementById('popup-name');
+
+        const popupDescription = document.getElementById('popup-description');
+
+        const popupCloseButton = document.getElementById('popup-close-button');
+
+        const gameCompletePopup = document.getElementById('game-complete-popup');
+
+        const completePopupCloseButton = document.getElementById('complete-popup-close-button');
+
+
+
+        let VEHICLES;
+
+        const MAX_LEVEL = 9;
+
+        const MAX_SPAWN_LEVEL = 4;
+
+
+
+        let engine, render, runner;
+
+        let currentScore = 0;
+
+        let highScore = localStorage.getItem('transportation-highscore') || 0;
+
+        let discoveredVehicles = JSON.parse(localStorage.getItem('discoveredVehicles')) || [0];
+
+        let isGameOver = false;
+
+        let currentVehicle = null;
+
+        let nextVehicleInfo = null;
+
+        let disableAction = false;
+
+        let isAudioStarted = false;
+
+        let isFirstVehicle = true;
+
+        
+
+        let bodiesToRemove = new Set();
+
+        let bodiesToAdd = [];
+
+
+
+        // 사운드 설정
+
+        const bgmSynth = new Tone.FMSynth({ harmonicity: 1.5, modulationIndex: 10, oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.1 }, modulation: { type: "sawtooth" }, modulationEnvelope: { attack: 0.1, decay: 0.1, sustain: 0.5, release: 0.1 } }).toDestination();
+
+        bgmSynth.volume.value = -15;
+
+        const bgmPattern = new Tone.Sequence((time, note) => { bgmSynth.triggerAttackRelease(note, "16n", time); }, ['C2', 'G2', 'C3', 'G2', 'C2', 'D#2', 'C2', 'D#2']).start(0);
+
+        bgmPattern.loop = true;
+
+        const melodySynth = new Tone.AMSynth({ envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.1 } }).toDestination();
+
+        melodySynth.volume.value = -10;
+
+        const melodyPattern = new Tone.Sequence((time, note) => { melodySynth.triggerAttackRelease(note, '8n', time); }, ['G4', 'A#4', 'C5', 'A#4', null, 'G4', 'F4', 'G4']).start("0:2");
+
+        melodyPattern.loop = true;
+
+        Tone.Transport.bpm.value = 140;
+
+        const sfxSynth = new Tone.PolySynth(Tone.Synth).toDestination();
+
+        const dropSound = () => sfxSynth.triggerAttackRelease("C4", "8n");
+
+        const mergeSound = (level) => sfxSynth.triggerAttackRelease(440 * Math.pow(2, (level - 4) / 12), "8n");
+
+        const discoverySound = () => { const now = Tone.now(); sfxSynth.triggerAttackRelease("C5", "8n", now); sfxSynth.triggerAttackRelease("E5", "8n", now + 0.1); sfxSynth.triggerAttackRelease("G5", "8n", now + 0.2); };
+
+        const completeSound = () => { const now = Tone.now(); sfxSynth.triggerAttackRelease("C5", "8n", now); sfxSynth.triggerAttackRelease("G5", "8n", now + 0.2); sfxSynth.triggerAttackRelease("C6", "8n", now + 0.4); };
+
+        const gameOverSound = () => { const now = Tone.now(); sfxSynth.triggerAttackRelease("C4", "8n", now); sfxSynth.triggerAttackRelease("G3", "8n", now + 0.2); sfxSynth.triggerAttackRelease("E3", "8n", now + 0.4); };
+
+
+
+        function showDiscoveryPopup(level) {
+
+            const vehicle = VEHICLES[level];
+
+            if (!vehicle) return;
+
+            disableAction = true; Runner.stop(runner); if (isAudioStarted) Tone.Transport.pause();
+
+            popupEmoji.textContent = vehicle.emoji; popupName.textContent = vehicle.name; popupDescription.textContent = vehicle.description;
+
+            discoveryPopup.classList.remove('hidden'); discoverySound();
+
+        }
+
+        function showGameCompletePopup() {
+
+            disableAction = true; Runner.stop(runner); if (isAudioStarted) Tone.Transport.pause();
+
+            gameCompletePopup.classList.remove('hidden'); completeSound();
+
+        }
+
+        popupCloseButton.addEventListener('click', () => {
+
+            discoveryPopup.classList.add('hidden'); Runner.run(runner, engine); if (isAudioStarted) Tone.Transport.start();
+
+            setTimeout(() => { if (!isGameOver) { spawnCurrentVehicle(); disableAction = false; } }, 100); 
+
+        });
+
+        completePopupCloseButton.addEventListener('click', () => {
+
+             gameCompletePopup.classList.add('hidden'); Runner.run(runner, engine); if (isAudioStarted) Tone.Transport.start();
+
+             setTimeout(() => { if (!isGameOver) { spawnCurrentVehicle(); disableAction = false; } }, 100);
+
+        });
+
+
+
+        function init() {
+
+            containerWidth = gameContainer.clientWidth; containerHeight = gameContainer.clientHeight;
+
+            VEHICLES = [ { level: 0, name: '자전거', radius: containerWidth * 0.05, score: 1, emoji: '🚲', color: '#ffc9c9', description: '두 바퀴로 씽씽! 페달을 밟아 앞으로 나아가는 멋진 친구예요.' }, { level: 1, name: '오토바이', radius: containerWidth * 0.065, score: 3, emoji: '🛵', color: '#fcc2d7', description: '부릉부릉! 엔진의 힘으로 자전거보다 훨씬 빠르게 달릴 수 있어요.' }, { level: 2, name: '자동차', radius: containerWidth * 0.08, score: 6, emoji: '🚗', color: '#eebefa', description: '네 개의 바퀴로 안정적이고 편안하게 우리를 태워줘요.' }, { level: 3, name: '버스', radius: containerWidth * 0.10, score: 10, emoji: '🚌', color: '#d0bfff', description: '많은 사람들을 한 번에 태우고 정해진 길을 따라 달려요.' }, { level: 4, name: '트럭', radius: containerWidth * 0.12, score: 15, emoji: '🚚', color: '#bac8ff', description: '크고 무거운 짐을 실어 멀리까지 안전하게 옮겨준답니다.' }, { level: 5, name: '기차', radius: containerWidth * 0.15, score: 21, emoji: '🚂', color: '#a3d8ff', description: '칙칙폭폭! 길고 긴 몸으로 아주 많은 사람과 짐을 싣고 달려요.' }, { level: 6, name: '배', radius: containerWidth * 0.18, score: 28, emoji: '🚢', color: '#99e9f2', description: '넓은 바다 위를 떠다니며 다른 나라로 여행을 떠날 수 있어요.' }, { level: 7, name: '비행기', radius: containerWidth * 0.22, score: 36, emoji: '✈️', color: '#96f2d7', description: '커다란 날개로 하늘을 날아 구름보다 높이 올라갈 수 있어요.' }, { level: 8, name: '로켓', radius: containerWidth * 0.28, score: 45, emoji: '🚀', color: '#b2f2bb', description: '강력한 불꽃을 내뿜으며 지구를 벗어나 우주로 날아올라요!' }, { level: 9, name: '우주선', radius: containerWidth * 0.34, score: 55, emoji: '🛸', color: '#ffec99', description: '반짝반짝 최종 단계! 미지의 우주를 탐험하는 신비한 비행체예요.' } ];
+
+            if (engine) World.clear(engine.world, false); if (render) Render.stop(render); if (runner) Runner.stop(runner); if (render && render.canvas) render.canvas.remove();
+
+            bodiesToRemove.clear(); bodiesToAdd = []; isFirstVehicle = true;
+
+            engine = Engine.create(); engine.world.gravity.y = 1;
+
+            render = Render.create({ element: gameContainer, engine: engine, options: { width: containerWidth, height: containerHeight, wireframes: false, background: 'transparent' } });
+
+            runner = Runner.create(); Runner.run(runner, engine); Render.run(render, engine);
+
+            currentScore = 0; isGameOver = false; disableAction = false; updateScores(); gameOverModal.classList.add('hidden');
+
+            createBoundaries(); prepareNextVehicle(); spawnCurrentVehicle(); setupEventListeners();
+
+            if (isAudioStarted) Tone.Transport.start();
+
+        }
+
+        function createBoundaries() {
+
+            const wallOptions = { isStatic: true, render: { fillStyle: '#60a5fa' } };
+
+            World.add(engine.world, [ Bodies.rectangle(containerWidth / 2, containerHeight, containerWidth, 50, wallOptions), Bodies.rectangle(10, containerHeight / 2, 20, containerHeight, wallOptions), Bodies.rectangle(containerWidth - 10, containerHeight / 2, 20, containerHeight, wallOptions) ]);
+
+        }
+
+        function addVehicle(x, y, level) {
+
+            if (level > MAX_LEVEL) return null;
+
+            const vehicleInfo = VEHICLES[level];
+
+            const vehicle = Bodies.circle(x, y, vehicleInfo.radius, { label: `vehicle_${level}`, restitution: 0.3, friction: 0.5, render: { fillStyle: vehicleInfo.color } });
+
+            if (!discoveredVehicles.includes(level)) {
+
+                discoveredVehicles.push(level); localStorage.setItem('discoveredVehicles', JSON.stringify(discoveredVehicles));
+
+                if (level === MAX_LEVEL) { showGameCompletePopup(); } else { showDiscoveryPopup(level); }
+
+            }
+
+            World.add(engine.world, vehicle); return vehicle;
+
+        }
+
+        function prepareNextVehicle() {
+
+            let spawnableLevels = discoveredVehicles.filter(level => level <= MAX_SPAWN_LEVEL); if (spawnableLevels.length === 0) spawnableLevels = [0];
+
+            const randomLevel = isFirstVehicle ? 0 : spawnableLevels[Math.floor(Math.random() * spawnableLevels.length)];
+
+            nextVehicleInfo = VEHICLES[randomLevel]; nextVehicleEmojiEl.textContent = nextVehicleInfo.emoji; nextVehicleEmojiEl.style.fontSize = `${containerWidth * 0.05 * 1.5}px`;
+
+        }
+
+        function spawnCurrentVehicle() {
+
+            if (isGameOver || currentVehicle) return; 
+
+            currentVehicle = addVehicle(containerWidth / 2, 50, nextVehicleInfo.level); if(currentVehicle) Body.setStatic(currentVehicle, true); prepareNextVehicle();
+
+        }
+
+        function setupEventListeners() {
+
+            const handleMove = (e) => {
+
+                if (!currentVehicle || isGameOver || disableAction) return; e.preventDefault();
+
+                let x = e.offsetX; if (e.touches) x = e.touches[0].clientX - gameContainer.getBoundingClientRect().left;
+
+                const radius = VEHICLES[parseInt(currentVehicle.label.split('_')[1])].radius; const clampedX = Common.clamp(x, radius + 10, containerWidth - radius - 10);
+
+                Body.setPosition(currentVehicle, { x: clampedX, y: currentVehicle.position.y });
+
+            };
+
+            const handleDrop = async () => {
+
+                if (!currentVehicle || isGameOver || disableAction) return;
+
+                if (!isAudioStarted) { await Tone.start(); Tone.Transport.start(); isAudioStarted = true; }
+
+                Body.setStatic(currentVehicle, false); dropSound(); if (isFirstVehicle) isFirstVehicle = false;
+
+                disableAction = true; currentVehicle = null;
+
+                setTimeout(() => { if (discoveryPopup.classList.contains('hidden') && gameCompletePopup.classList.contains('hidden')) { spawnCurrentVehicle(); disableAction = false; } }, 800);
+
+            };
+
+            gameContainer.addEventListener('mousemove', handleMove); gameContainer.addEventListener('touchmove', handleMove, { passive: false }); gameContainer.addEventListener('mousedown', handleDrop); gameContainer.addEventListener('touchend', handleDrop);
+
+            Events.on(engine, 'collisionStart', handleCollision); Events.on(engine, 'afterUpdate', processDeferredActions); Events.on(render, 'afterRender', afterRender);
+
+        }
+
+        function processDeferredActions() {
+
+            if(isGameOver) return;
+
+            if (bodiesToRemove.size > 0) { bodiesToRemove.forEach(body => World.remove(engine.world, body)); bodiesToRemove.clear(); }
+
+            if (bodiesToAdd.length > 0) { bodiesToAdd.forEach(data => addVehicle(data.x, data.y, data.level)); bodiesToAdd = []; }
+
+        }
+
+        let gameOverCheckTimeout = null;
+
+        function afterRender() {
+
+            const bodies = Composite.allBodies(engine.world); const context = render.context; let isAboveLine = false;
+
+            bodies.forEach(body => {
+
+                if (body.label && body.label.startsWith('vehicle_')) {
+
+                    const level = parseInt(body.label.split('_')[1]); const vehicleInfo = VEHICLES[level];
+
+                    context.font = `${vehicleInfo.radius * 1.5}px Jua`; context.textAlign = "center"; context.textBaseline = "middle"; context.fillStyle = '#000000'; context.fillText(vehicleInfo.emoji, body.position.x, body.position.y);
+
+                    if (!body.isStatic && body.position.y - body.circleRadius < 100) { isAboveLine = true; }
+
+                }
+
+            });
+
+            context.beginPath(); context.moveTo(0, 100); context.lineTo(containerWidth, 100); context.strokeStyle = 'rgba(255, 0, 0, 0.5)'; context.lineWidth = 2; context.setLineDash([5, 5]); context.stroke(); context.setLineDash([]);
+
+            if (isAboveLine && !isGameOver) {
+
+                if (!gameOverCheckTimeout) {
+
+                    gameOverCheckTimeout = setTimeout(() => {
+
+                         const bodiesNow = Composite.allBodies(engine.world); let stillAbove = false;
+
+                         bodiesNow.forEach(body => { if (body.label && body.label.startsWith('vehicle_') && !body.isStatic && body.position.y - body.circleRadius < 100) { stillAbove = true; } });
+
+                         if (stillAbove) triggerGameOver();
+
+                        gameOverCheckTimeout = null;
+
+                    }, 1000);
+
+                }
+
+            } else if (!isAboveLine && gameOverCheckTimeout) { clearTimeout(gameOverCheckTimeout); gameOverCheckTimeout = null; }
+
+        }
+
+        function handleCollision(event) {
+
+            if (isGameOver) return; const pairs = event.pairs;
+
+            for (const pair of pairs) {
+
+                const { bodyA, bodyB } = pair;
+
+                 if (!bodyA.label || !bodyB.label || bodiesToRemove.has(bodyA) || bodiesToRemove.has(bodyB)) continue;
+
+                if (bodyA.label === bodyB.label && bodyA.label.startsWith('vehicle_')) {
+
+                    const level = parseInt(bodyA.label.split('_')[1]); if (level >= MAX_LEVEL) continue;
+
+                    bodiesToRemove.add(bodyA); bodiesToRemove.add(bodyB);
+
+                    bodiesToAdd.push({ x: (bodyA.position.x + bodyB.position.x) / 2, y: (bodyA.position.y + bodyB.position.y) / 2, level: level + 1 });
+
+                    currentScore += VEHICLES[level].score; updateScores(); mergeSound(level + 1);
+
+                }
+
+            }
+
+        }
+
+        
+
+        async function triggerGameOver() {
+
+            if(isGameOver) return; isGameOver = true;
+
+            Runner.stop(runner); gameOverSound(); if (isAudioStarted) Tone.Transport.stop();
+
+            
+
+            if (!db) {
+
+                showSimpleGameOver();
+
+                return;
+
+            }
+
+
+
+            const leaderboardRef = collection(db, `artifacts/${appId}/public/data/leaderboard`);
+
+            const q = query(leaderboardRef, orderBy("score", "desc"), limit(10));
+
+            const querySnapshot = await getDocs(q);
+
+            
+
+            let leaderboard = [];
+
+            querySnapshot.forEach((doc) => {
+
+                leaderboard.push({ id: doc.id, ...doc.data() });
+
+            });
+
+
+
+            const isTopTen = leaderboard.length < 10 || currentScore > leaderboard[leaderboard.length - 1].score;
+
+
+
+            if (isTopTen) {
+
+                showNameInput(leaderboard);
+
+            } else {
+
+                showLeaderboard(leaderboard);
+
+            }
+
+        }
+
+
+
+        function showSimpleGameOver() {
+
+             gameOverModal.innerHTML = `<h2 class="text-5xl font-bold text-red-500 mb-4">게임 종료!</h2><p class="text-2xl text-white mb-2">최종 점수</p><p class="text-6xl font-bold text-yellow-300 mb-8">${currentScore}</p><button id="restart-button-simple" class="bg-yellow-400 hover:bg-yellow-500 text-slate-800 font-bold py-3 px-8 rounded-full text-2xl shadow-lg">다시 하기</button>`;
+
+             gameOverModal.classList.remove('hidden');
+
+             document.getElementById('restart-button-simple').addEventListener('click', init);
+
+        }
+
+        
+
+        function showNameInput(leaderboard) {
+
+            gameOverModal.innerHTML = `
+
+                <h2 class="text-4xl font-bold text-yellow-300 mb-2 blinking">🎉 TOP 10 달성! 🎉</h2>
+
+                <p class="text-xl text-white mb-4">랭킹에 이름을 남겨주세요!</p>
+
+                <p class="text-5xl font-bold text-white mb-6">${currentScore}점</p>
+
+                <input type="text" id="name-input" placeholder="이름 (최대 10자)" maxlength="10" class="text-center text-xl p-2 rounded-md w-full mb-4 text-slate-800">
+
+                <button id="submit-score-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full text-2xl shadow-lg">등록하기</button>
+
+            `;
+
+            gameOverModal.classList.remove('hidden');
+
+            
+
+            const nameInput = document.getElementById('name-input');
+
+            document.getElementById('submit-score-button').addEventListener('click', async () => {
+
+                const name = nameInput.value.trim() || "이름없음";
+
+                await saveScoreToLeaderboard(name, currentScore, leaderboard);
+
+            });
+
+        }
+
+
+
+        async function saveScoreToLeaderboard(name, score, leaderboard) {
+
+            const leaderboardRef = collection(db, `artifacts/${appId}/public/data/leaderboard`);
+
+            await addDoc(leaderboardRef, { name, score, createdAt: new Date() });
+
+
+
+            if (leaderboard.length >= 10) {
+
+                const lowestScoreDocId = leaderboard[leaderboard.length - 1].id;
+
+                await deleteDoc(doc(db, `artifacts/${appId}/public/data/leaderboard`, lowestScoreDocId));
+
+            }
+
+            
+
+            const updatedQuerySnapshot = await getDocs(query(leaderboardRef, orderBy("score", "desc"), limit(10)));
+
+            const updatedLeaderboard = [];
+
+            updatedQuerySnapshot.forEach((doc) => {
+
+                updatedLeaderboard.push({ id: doc.id, ...doc.data() });
+
+            });
+
+            showLeaderboard(updatedLeaderboard, auth.currentUser.uid + score); // 현재 플레이어 강조를 위한 임시 ID
+
+        }
+
+
+
+        function showLeaderboard(leaderboard, highlightId = null) {
+
+            let leaderboardHtml = `<h2 class="text-4xl font-bold text-yellow-300 mb-4">🏆 명예의 전당 🏆</h2><div class="w-full text-left space-y-2 mb-6">`;
+
+            leaderboard.forEach((entry, index) => {
+
+                const isHighlight = highlightId && entry.id === highlightId;
+
+                leaderboardHtml += `
+
+                    <div class="flex justify-between items-center p-2 rounded-md ${isHighlight ? 'bg-yellow-400 text-slate-800' : 'bg-white/20 text-white'}">
+
+                        <span class="font-bold text-lg">${index + 1}. ${entry.name}</span>
+
+                        <span class="text-lg">${entry.score}점</span>
+
+                    </div>
+
+                `;
+
+            });
+
+            leaderboardHtml += `</div><button id="restart-button-leaderboard" class="bg-yellow-400 hover:bg-yellow-500 text-slate-800 font-bold py-3 px-8 rounded-full text-2xl shadow-lg">다시 하기</button>`;
+
+            
+
+            gameOverModal.innerHTML = leaderboardHtml;
+
+            gameOverModal.classList.remove('hidden');
+
+            document.getElementById('restart-button-leaderboard').addEventListener('click', init);
+
+        }
+
+
+
+        function updateScores() {
+
+            currentScoreEl.textContent = currentScore;
+
+            if (currentScore > highScore) {
+
+                highScore = currentScore; localStorage.setItem('transportation-highscore', highScore);
+
+            }
+
+            highScoreEl.textContent = highScore;
+
+        }
+
+        
+
+        window.addEventListener('resize', () => { clearTimeout(window.resizeTimeout); window.resizeTimeout = setTimeout(init, 250); });
+
+        
+
+        // Firebase 설정으로 게임 시작
+
+        setupFirebase();
+
+    </script>
+
+</body>
+
+</html>
