@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 스네이크 퀴즈 (조작 및 경계 수정)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1e1b4b 0%, #2a2d6e 100%);
+            background-attachment: fixed;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        #gameScreen {
+            transition: opacity 0.5s ease-in-out, transform 0.3s ease;
+        }
+        .glow {
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+        }
+        .hover-glow:hover {
+            box-shadow: 0 0 30px rgba(34, 211, 238, 0.7);
+            transform: translateY(-2px);
+        }
+        input[type="radio"]:checked + label {
+            background-color: #06b6d4;
+            color: white;
+            box-shadow: 0 0 15px #06b6d4;
+        }
+    </style>
+</head>
+<body class="text-white flex items-center justify-center min-h-screen">
+
+    <div class="w-full h-screen flex flex-col items-center justify-center p-4 md:p-8">
+        <div class="w-full max-w-6xl text-center">
+            <h1 class="text-4xl md:text-6xl font-bold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 font-orbitron">
+                3D 스네이크 퀴즈
+            </h1>
+            <p class="text-gray-300 mb-6 text-lg md:text-xl">지식을 먹으며 우주를 탐험하세요!</p>
+            
+            <div id="score-board" class="flex flex-col md:flex-row justify-around bg-gray-800/50 backdrop-blur-sm p-4 rounded-xl mb-6 text-lg border border-cyan-500/30 glow">
+                <div id="p1-score-container">P1 점수: <span id="p1-score" class="font-bold text-cyan-400">0</span></div>
+                <div id="p2-score-container" class="hidden mt-2 md:mt-0">P2 점수: <span id="p2-score" class="font-bold text-red-500">0</span></div>
+                <div class="mt-2 md:mt-0">최고 점수: <span id="highScore" class="font-bold text-green-300">0</span></div>
+            </div>
+            
+            <div id="quiz-container" class="bg-gray-800/50 backdrop-blur-sm p-4 rounded-xl mb-6 text-2xl md:text-3xl font-bold text-white border border-cyan-500/30 glow">
+                <span id="quiz-question">문제를 기다리는 중...</span>
+            </div>
+
+            <div class="relative w-full aspect-video">
+                <div id="canvas-container" class="bg-gray-900 rounded-xl shadow-2xl w-full h-full border-2 border-cyan-500/50 glow">
+                    <!-- Three.js 캔버스 -->
+                </div>
+
+                <div id="gameScreen" class="absolute inset-0 bg-gradient-to-b from-gray-900/90 to-gray-800/90 flex flex-col items-center justify-center rounded-xl">
+                    <h2 id="gameTitle" class="text-5xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-6 font-orbitron">
+                        게임 시작
+                    </h2>
+                    
+                    <div class="flex space-x-4 mb-6">
+                        <input type="radio" name="gameMode" id="mode1p" value="1p" class="hidden" checked>
+                        <label for="mode1p" class="px-6 py-2 rounded-md cursor-pointer bg-gray-700 hover:bg-gray-600 transition">1인 플레이</label>
+                        
+                        <input type="radio" name="gameMode" id="mode2p" value="2p" class="hidden">
+                        <label for="mode2p" class="px-6 py-2 rounded-md cursor-pointer bg-gray-700 hover:bg-gray-600 transition">2인 플레이</label>
+                    </div>
+
+                    <button id="startButton" class="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-4 px-10 rounded-full text-xl transition duration-300 transform hover:scale-105 hover-glow">
+                        시작하기
+                    </button>
+                    <p id="finalScoreText" class="text-2xl mt-6 hidden"></p>
+                </div>
+            </div>
+            <div id="controls-info" class="hidden mt-4 text-gray-400 md:flex justify-center space-x-8">
+                <p><span class="font-bold text-cyan-400">P1 (파랑):</span> 화살표 키 (←↑→↓)</p>
+                <p><span class="font-bold text-red-500">P2 (빨강):</span> WASD 키</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM 요소 가져오기 ---
+        const canvasContainer = document.getElementById('canvas-container');
+        const p1ScoreElement = document.getElementById('p1-score');
+        const p2ScoreElement = document.getElementById('p2-score');
+        const p1ScoreContainer = document.getElementById('p1-score-container');
+        const p2ScoreContainer = document.getElementById('p2-score-container');
+        const highScoreElement = document.getElementById('highScore');
+        const gameScreen = document.getElementById('gameScreen');
+        const startButton = document.getElementById('startButton');
+        const gameTitle = document.getElementById('gameTitle');
+        const finalScoreText = document.getElementById('finalScoreText');
+        const quizQuestionElement = document.getElementById('quiz-question');
+        const controlsInfo = document.getElementById('controls-info');
+
+        // --- Three.js 기본 설정 ---
+        let scene, camera, renderer;
+        const BOARD_SIZE = 800;
+        const GRID_DIVISIONS = 20;
+        const GRID_SIZE = BOARD_SIZE / GRID_DIVISIONS;
+
+        // --- 게임 상태 변수 ---
+        let gameMode = '1p';
+        let snake = [], snake2 = [];
+        let targetPositions = [], targetPositions2 = [];
+        let foods = [];
+        let dx = GRID_SIZE, dz = 0;
+        let dx2 = -GRID_SIZE, dz2 = 0;
+        let score = 0, score2 = 0;
+        let highScore = localStorage.getItem('snakeQuiz_highscore') || 0;
+        let changingDirection = { p1: false, p2: false };
+        let gameActive = false;
+        let animationFrameId;
+        let lastUpdateTime = 0;
+        const gameSpeed = 130;
+        const SMOOTHING_FACTOR = 0.15;
+        let currentQuiz = {};
+
+        // --- 별 배경 생성 함수 ---
+        function createStarfield() {
+            const starVertices = [];
+            for (let i = 0; i < 30000; i++) {
+                starVertices.push(THREE.MathUtils.randFloatSpread(5000));
+                starVertices.push(THREE.MathUtils.randFloatSpread(5000));
+                starVertices.push(THREE.MathUtils.randFloatSpread(5000));
+            }
+            const starGeometry = new THREE.BufferGeometry();
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const starMaterial = new THREE.PointsMaterial({ 
+                color: 0xcccccc, 
+                size: 0.9,
+                transparent: true,
+                opacity: 0.7
+            });
+            scene.add(new THREE.Points(starGeometry, starMaterial));
+        }
+
+        // --- Three.js 씬 초기화 ---
+        function initThree() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0e2b);
+
+            const aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 7000);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            canvasContainer.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0x22d3ee, 1.0);
+            directionalLight.position.set(120, 240, 160);
+            scene.add(directionalLight);
+
+            const gridHelper = new THREE.GridHelper(BOARD_SIZE, GRID_DIVISIONS, 0x4b6cb7, 0x182848);
+            gridHelper.material.opacity = 0.3;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+            
+            // **추가**: 경계벽 생성
+            createBoundaryWalls();
+            
+            createStarfield();
+            highScoreElement.textContent = highScore;
+        }
+        
+        // --- 경계벽 생성 함수 ---
+        function createBoundaryWalls() {
+            const wallHeight = GRID_SIZE * 2;
+            const wallThickness = 10;
+            const wallMaterial = new THREE.MeshStandardMaterial({
+                color: 0x22d3ee,
+                emissive: 0x22d3ee,
+                emissiveIntensity: 0.3,
+                metalness: 0.8,
+                roughness: 0.2,
+                transparent: true,
+                opacity: 0.5
+            });
+
+            const wallTopGeo = new THREE.BoxGeometry(BOARD_SIZE + wallThickness, wallHeight, wallThickness);
+            const wallTop = new THREE.Mesh(wallTopGeo, wallMaterial);
+            wallTop.position.set(0, wallHeight / 2, -BOARD_SIZE / 2);
+            scene.add(wallTop);
+
+            const wallBottom = wallTop.clone();
+            wallBottom.position.z = BOARD_SIZE / 2;
+            scene.add(wallBottom);
+
+            const wallSideGeo = new THREE.BoxGeometry(wallThickness, wallHeight, BOARD_SIZE + wallThickness);
+            const wallLeft = new THREE.Mesh(wallSideGeo, wallMaterial);
+            wallLeft.position.set(-BOARD_SIZE / 2, wallHeight / 2, 0);
+            scene.add(wallLeft);
+
+            const wallRight = wallLeft.clone();
+            wallRight.position.x = BOARD_SIZE / 2;
+            scene.add(wallRight);
+        }
+
+        // --- 게임 시작 ---
+        function startGame() {
+            gameMode = document.querySelector('input[name="gameMode"]:checked').value;
+            
+            if (gameMode === '2p') {
+                camera.position.set(0, 600, 500); // 2인용 쿼터뷰
+                camera.lookAt(0, 0, 0);
+                p2ScoreContainer.classList.remove('hidden');
+                controlsInfo.classList.remove('hidden');
+            } else {
+                camera.position.set(0, 360, 280); // 1인용 카메라
+                p2ScoreContainer.classList.add('hidden');
+                controlsInfo.classList.add('hidden');
+            }
+
+            gameScreen.classList.add('hidden');
+            gameActive = true;
+            initializeGame();
+            lastUpdateTime = 0;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animate(0);
+        }
+
+        // --- 게임 초기화 ---
+        function initializeGame() {
+            [...snake, ...snake2].forEach(s => scene.remove(s));
+            snake = []; snake2 = [];
+            targetPositions = []; targetPositions2 = [];
+            
+            // P1 초기화
+            const p1StartX = -GRID_SIZE * 6;
+            const p1StartZ = GRID_SIZE * 6;
+            for (let i = 0; i < 3; i++) {
+                const x = p1StartX + i * GRID_SIZE;
+                const segment = createSnakeSegment(x, p1StartZ, 'p1', i === 2);
+                snake.unshift(segment);
+                targetPositions.unshift(new THREE.Vector3(x, GRID_SIZE / 2, p1StartZ));
+            }
+            dx = GRID_SIZE; dz = 0;
+            score = 0; p1ScoreElement.textContent = score;
+
+            // P2 초기화 (2인 모드일 경우)
+            if (gameMode === '2p') {
+                const p2StartX = GRID_SIZE * 6;
+                const p2StartZ = -GRID_SIZE * 6;
+                for (let i = 0; i < 3; i++) {
+                    const x = p2StartX - i * GRID_SIZE;
+                    const segment = createSnakeSegment(x, p2StartZ, 'p2', i === 2);
+                    snake2.unshift(segment);
+                    targetPositions2.unshift(new THREE.Vector3(x, GRID_SIZE / 2, p2StartZ));
+                }
+                dx2 = -GRID_SIZE; dz2 = 0;
+                score2 = 0; p2ScoreElement.textContent = score2;
+            }
+            
+            generateNewQuizAndFoods();
+        }
+        
+        // --- 뱀 조각 생성 ---
+        function createSnakeSegment(x, z, player, isHead = false) {
+            let geometry, material;
+            const p_color = player === 'p1' ? 0x06b6d4 : 0xef4444;
+            const s_color = player === 'p1' ? 0xa5f3fc : 0xf87171;
+
+            if (isHead) {
+                geometry = new THREE.SphereGeometry(GRID_SIZE / 1.8, 32, 32);
+                material = new THREE.MeshStandardMaterial({
+                    color: p_color,
+                    metalness: 0.3,
+                    roughness: 0.5,
+                    emissive: p_color,
+                    emissiveIntensity: 0.4
+                });
+            } else {
+                geometry = new THREE.SphereGeometry(GRID_SIZE / 2.2, 24, 24);
+                material = new THREE.MeshStandardMaterial({
+                    color: s_color,
+                    metalness: 0.3,
+                    roughness: 0.5,
+                    emissive: s_color,
+                    emissiveIntensity: 0.3
+                });
+            }
+            const segment = new THREE.Mesh(geometry, material);
+            segment.position.set(x, GRID_SIZE / 2, z);
+            scene.add(segment);
+            return segment;
+        }
+
+        // --- 애니메이션 루프 ---
+        function animate(currentTime) {
+            if (!gameActive) return;
+            animationFrameId = requestAnimationFrame(animate);
+
+            if (currentTime - lastUpdateTime > gameSpeed) {
+                lastUpdateTime = currentTime;
+                
+                const gameEndState = didGameEnd();
+                if (gameEndState.gameOver) {
+                    gameOver(gameEndState.winner);
+                    return;
+                }
+                changingDirection.p1 = false;
+                changingDirection.p2 = false;
+                moveSnakesLogic();
+            }
+            
+            updateVisuals();
+            renderer.render(scene, camera);
+        }
+
+        // --- 시각적 요소 업데이트 ---
+        function updateVisuals() {
+            for (let i = 0; i < snake.length; i++) snake[i].position.lerp(targetPositions[i], SMOOTHING_FACTOR);
+            if (gameMode === '2p') {
+                for (let i = 0; i < snake2.length; i++) snake2[i].position.lerp(targetPositions2[i], SMOOTHING_FACTOR);
+            }
+
+            if (gameMode === '1p' && snake.length > 0) {
+                const headPosition = snake[0].position;
+                const cameraTargetPosition = new THREE.Vector3(
+                    headPosition.x,
+                    headPosition.y + BOARD_SIZE * 0.4,
+                    headPosition.z + BOARD_SIZE * 0.3
+                );
+                camera.position.lerp(cameraTargetPosition, 0.05);
+                camera.lookAt(headPosition.x, 0, headPosition.z);
+            }
+        }
+
+        // --- 뱀의 논리적 이동 ---
+        function moveSnakesLogic() {
+            const newHeadTarget = new THREE.Vector3().copy(targetPositions[0]);
+            newHeadTarget.x += dx; newHeadTarget.z += dz;
+            updateSingleSnake('p1', newHeadTarget, snake, targetPositions);
+
+            if (gameMode === '2p') {
+                const newHeadTarget2 = new THREE.Vector3().copy(targetPositions2[0]);
+                newHeadTarget2.x += dx2; newHeadTarget2.z += dz2;
+                updateSingleSnake('p2', newHeadTarget2, snake2, targetPositions2);
+            }
+        }
+
+        // --- 단일 뱀 업데이트 로직 ---
+        function updateSingleSnake(player, newHeadTarget, currentSnake, currentTargets) {
+            const eatenFoodIndex = foods.findIndex(food => food.mesh.position.distanceTo(newHeadTarget) < GRID_SIZE);
+            
+            if (eatenFoodIndex > -1) {
+                const eatenFood = foods[eatenFoodIndex];
+                if (eatenFood.number === currentQuiz.answer) {
+                    if (player === 'p1') score += 10; else score2 += 10;
+                    const lastTargetPos = currentTargets[currentTargets.length - 1];
+                    const newSegment = createSnakeSegment(lastTargetPos.x, lastTargetPos.z, player, false);
+                    currentSnake.push(newSegment);
+                    currentTargets.push(new THREE.Vector3().copy(lastTargetPos));
+                } else {
+                    if (player === 'p1') score = Math.max(0, score - 5); else score2 = Math.max(0, score2 - 5);
+                    if (currentSnake.length > 2) {
+                        scene.remove(currentSnake.pop());
+                        currentTargets.pop();
+                    }
+                }
+                p1ScoreElement.textContent = score;
+                p2ScoreElement.textContent = score2;
+                generateNewQuizAndFoods();
+            }
+
+            for (let i = currentTargets.length - 1; i > 0; i--) currentTargets[i].copy(currentTargets[i - 1]);
+            currentTargets[0].copy(newHeadTarget);
+        }
+
+        // --- 게임 종료 조건 확인 ---
+        function didGameEnd() {
+            if (!targetPositions.length) return { gameOver: false };
+            const head1 = targetPositions[0];
+            const body1 = targetPositions.slice(1);
+            
+            if (checkWallCollision(head1) || checkSelfCollision(head1, body1)) return { gameOver: true, winner: 'p2' };
+
+            if (gameMode === '2p') {
+                if (!targetPositions2.length) return { gameOver: false };
+                const head2 = targetPositions2[0];
+                const body2 = targetPositions2.slice(1);
+
+                if (checkWallCollision(head2) || checkSelfCollision(head2, body2)) return { gameOver: true, winner: 'p1' };
+                if (checkSelfCollision(head1, targetPositions2)) return { gameOver: true, winner: 'p2' };
+                if (checkSelfCollision(head2, targetPositions)) return { gameOver: true, winner: 'p1' };
+            }
+            
+            return { gameOver: false };
+        }
+
+        function checkWallCollision(head) {
+            const halfBoard = BOARD_SIZE / 2 - GRID_SIZE / 2;
+            return head.x > halfBoard || head.x < -halfBoard || head.z > halfBoard || head.z < -halfBoard;
+        }
+
+        function checkSelfCollision(head, body) {
+            for (const segment of body) {
+                if (head.x === segment.x && head.z === segment.z) return true;
+            }
+            return false;
+        }
+
+        // --- 게임 오버 처리 ---
+        function gameOver(winner) {
+            gameActive = false;
+            cancelAnimationFrame(animationFrameId);
+            const totalScore = score + score2;
+            if (totalScore > highScore) {
+                highScore = totalScore;
+                localStorage.setItem('snakeQuiz_highscore', highScore);
+                highScoreElement.textContent = highScore;
+            }
+            
+            gameScreen.classList.remove('hidden');
+            gameTitle.textContent = '게임 오버!';
+            startButton.textContent = '다시 시작';
+            
+            if (gameMode === '1p') {
+                finalScoreText.innerHTML = `최종 점수: <span class="font-bold text-yellow-300">${score}</span>`;
+            } else {
+                if(score > score2) winner = 'p1';
+                else if (score2 > score) winner = 'p2';
+                else winner = 'draw';
+
+                if (winner === 'p1') finalScoreText.innerHTML = `<span class="font-bold text-cyan-400">플레이어 1</span> 승리!`;
+                else if (winner === 'p2') finalScoreText.innerHTML = `<span class="font-bold text-red-500">플레이어 2</span> 승리!`;
+                else finalScoreText.textContent = '무승부!';
+            }
+            finalScoreText.classList.remove('hidden');
+        }
+        
+        // --- 키보드 입력 처리 ---
+        function changeDirection(event) {
+            if (!gameActive) return;
+            const keyPressed = event.key;
+            
+            // **수정**: P1 조작을 화살표 키에만 반응하도록 변경
+            if (!changingDirection.p1) {
+                const goingUp = dz === -GRID_SIZE, goingDown = dz === GRID_SIZE;
+                const goingRight = dx === GRID_SIZE, goingLeft = dx === -GRID_SIZE;
+                if (keyPressed === "ArrowLeft" && !goingRight) { dx = -GRID_SIZE; dz = 0; changingDirection.p1 = true; }
+                if (keyPressed === "ArrowUp" && !goingDown) { dx = 0; dz = -GRID_SIZE; changingDirection.p1 = true; }
+                if (keyPressed === "ArrowRight" && !goingLeft) { dx = GRID_SIZE; dz = 0; changingDirection.p1 = true; }
+                if (keyPressed === "ArrowDown" && !goingUp) { dx = 0; dz = GRID_SIZE; changingDirection.p1 = true; }
+            }
+            
+            // **수정**: P2 조작을 WASD 키에만 반응하도록 명확히 분리
+            if (gameMode === '2p' && !changingDirection.p2) {
+                const keyLower = keyPressed.toLowerCase();
+                const goingUp2 = dz2 === -GRID_SIZE, goingDown2 = dz2 === GRID_SIZE;
+                const goingRight2 = dx2 === GRID_SIZE, goingLeft2 = dx2 === -GRID_SIZE;
+                if (keyLower === "a" && !goingRight2) { dx2 = -GRID_SIZE; dz2 = 0; changingDirection.p2 = true; }
+                if (keyLower === "w" && !goingDown2) { dx2 = 0; dz2 = -GRID_SIZE; changingDirection.p2 = true; }
+                if (keyLower === "d" && !goingLeft2) { dx2 = GRID_SIZE; dz2 = 0; changingDirection.p2 = true; }
+                if (keyLower === "s" && !goingUp2) { dx2 = 0; dz2 = GRID_SIZE; changingDirection.p2 = true; }
+            }
+        }
+
+        // --- 창 크기 조절 처리 ---
+        function onWindowResize() {
+            if (!renderer || !camera) return;
+            const container = canvasContainer;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+        
+        // --- 기타 함수 및 이벤트 리스너 ---
+        function generateNewQuizAndFoods() {
+            foods.forEach(food => {
+                scene.remove(food.mesh);
+                food.mesh.geometry.dispose();
+                if(food.mesh.material.map) food.mesh.material.map.dispose();
+                food.mesh.material.dispose();
+            });
+            foods = [];
+
+            const operators = ['+', '-', '*', '/'];
+            const operator = operators[Math.floor(Math.random() * operators.length)];
+            let num1, num2, answer;
+
+            switch (operator) {
+                case '+': num1 = Math.floor(Math.random() * 20) + 1; num2 = Math.floor(Math.random() * 20) + 1; answer = num1 + num2; break;
+                case '-': num1 = Math.floor(Math.random() * 20) + 5; num2 = Math.floor(Math.random() * num1) + 1; answer = num1 - num2; break;
+                case '*': num1 = Math.floor(Math.random() * 9) + 2; num2 = Math.floor(Math.random() * 9) + 2; answer = num1 * num2; break;
+                case '/': num2 = Math.floor(Math.random() * 9) + 2; answer = Math.floor(Math.random() * 9) + 2; num1 = num2 * answer; break;
+            }
+            
+            currentQuiz.question = `${num1} ${operator} ${num2} = ?`;
+            currentQuiz.answer = answer;
+            quizQuestionElement.textContent = currentQuiz.question;
+
+            const answers = [answer];
+            while (answers.length < 4) {
+                const wrongAnswer = answer + Math.floor(Math.random() * 10) - 5;
+                if (wrongAnswer !== answer && !answers.includes(wrongAnswer)) answers.push(wrongAnswer);
+            }
+            
+            for (let i = answers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [answers[i], answers[j]] = [answers[j], answers[i]];
+            }
+
+            answers.forEach(val => createFoodBlock(val));
+        }
+
+        function createFoodBlock(number) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256; canvas.height = 256;
+            context.fillStyle = 'rgba(31, 41, 55, 0.9)';
+            context.fillRect(0, 0, 256, 256);
+            context.font = 'bold 80px Orbitron';
+            context.fillStyle = '#ffffff';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(number, 128, 128);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.MeshStandardMaterial({ 
+                map: texture, 
+                metalness: 0.3, 
+                roughness: 0.7,
+                emissive: 0x22d3ee,
+                emissiveIntensity: 0.4
+            });
+            const geometry = new THREE.BoxGeometry(GRID_SIZE, GRID_SIZE, GRID_SIZE);
+            const foodMesh = new THREE.Mesh(geometry, material);
+
+            let validPosition = false;
+            while (!validPosition) {
+                const x = Math.round((Math.random() * (GRID_DIVISIONS - 1) - (GRID_DIVISIONS - 1) / 2)) * GRID_SIZE;
+                const z = Math.round((Math.random() * (GRID_DIVISIONS - 1) - (GRID_DIVISIONS - 1) / 2)) * GRID_SIZE;
+                foodMesh.position.set(x, GRID_SIZE / 2, z);
+
+                const allObjects = [...snake, ...snake2, ...foods.map(f => f.mesh)];
+                if (!allObjects.some(obj => obj.position.distanceTo(foodMesh.position) < GRID_SIZE)) validPosition = true;
+            }
+            
+            foodMesh.userData.number = number;
+            foods.push({ mesh: foodMesh, number: number });
+            scene.add(foodMesh);
+        }
+
+        document.addEventListener("keydown", changeDirection);
+        startButton.addEventListener('click', startGame);
+        window.addEventListener('resize', onWindowResize, false);
+
+        initThree();
+    </script>
+</body>
+</html>
